@@ -1,0 +1,479 @@
+/* ============================================
+   RESUME LAYOUT — Jake's Resume / LaTeX Style
+   Computer Modern font (loaded locally)
+   ============================================ */
+
+.resume-page {
+  width: 8.5in;
+  height: 11in;
+  padding: 0.22in 0.42in 0.22in 0.42in;
+  font-family: 'Computer Modern Serif', Cambria, 'Times New Roman', serif;
+  font-size: 9.5pt;
+  line-height: 1.18;
+  color: #000;
+  background: #fff;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
+}
+
+/* --- Name --- */
+.resume-name {
+  font-size: 24pt;
+  font-weight: 700;
+  text-align: center;
+  margin: 0;
+  line-height: 1.1;
+}
+
+/* --- Contact --- */
+.resume-contact {
+  text-align: center;
+  font-size: 9pt;
+  margin: 1pt 0 0 0;
+  line-height: 1.2;
+}
+.resume-contact span + span::before {
+  content: var(--contact-sep, ' | ');
+  margin: 0 1pt;
+}
+.contact-link {
+  color: inherit;
+  text-decoration: none;
+}
+.contact-link:hover {
+  text-decoration: underline;
+}
+
+/* --- Section Headings --- */
+.section-heading {
+  font-size: 11pt;
+  font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  border-bottom: 0.7pt solid #000;
+  padding-bottom: 0;
+  margin: 5pt 0 2pt 0;
+  line-height: 1.35;
+}
+
+/* --- Education --- */
+.edu-entry {
+  display: flex;
+  margin: 0;
+  margin-top: var(--bullet-gap, 0);
+}
+.edu-entry:first-child {
+  margin-top: 0;
+}
+.edu-bullet {
+  flex-shrink: 0;
+  width: 12pt;
+  font-size: 8pt;
+  line-height: 1.6;
+}
+.edu-content {
+  flex: 1;
+  min-width: 0;
+}
+.edu-row-1,
+.edu-row-2 {
+  display: flex;
+  align-items: baseline;
+  line-height: 1.25;
+}
+.edu-school { font-weight: 700; }
+.edu-degree { font-style: italic; }
+.edu-gpa { margin-left: 4pt; }
+.edu-location { flex-shrink: 0; }
+.edu-dates { font-style: italic; flex-shrink: 0; }
+.edu-coursework {
+  font-size: 8.5pt;
+  line-height: 1.15;
+  font-style: italic;
+  margin: 0;
+}
+
+/* --- Skills --- */
+.skills-section { margin: 0; }
+.skill-row {
+  display: flex;
+  line-height: 1.25;
+  margin: 0;
+  margin-top: var(--bullet-gap, 0);
+}
+.skill-row:first-child {
+  margin-top: 0;
+}
+.skill-row::before {
+  content: '\2022';
+  margin-right: 5pt;
+  flex-shrink: 0;
+  font-weight: 700;
+}
+.skill-category {
+  font-weight: 700;
+  white-space: nowrap;
+  margin-right: 3pt;
+}
+.skill-category::after { content: ':'; }
+.skill-values { flex: 1; }
+
+/* --- Experience --- */
+.entry {
+  display: flex;
+  margin: 0;
+  margin-top: var(--bullet-gap, 0);
+}
+.entry:first-child {
+  margin-top: 0;
+}
+.entry-bullet {
+  flex-shrink: 0;
+  width: 12pt;
+  font-size: 8pt;
+  line-height: 1.6;
+}
+.entry-content {
+  flex: 1;
+  min-width: 0;
+}
+.entry-row {
+  display: flex;
+  align-items: baseline;
+  line-height: 1.25;
+}
+.entry-company { font-weight: 700; }
+.entry-location { flex-shrink: 0; }
+.entry-role { font-style: italic; }
+.entry-dates { font-style: italic; flex-shrink: 0; }
+
+/* --- Sub-bullets (◦) --- */
+.bullet-list {
+  list-style: none;
+  padding-left: 12pt;
+  margin: 0;
+}
+.bullet-list li {
+  position: relative;
+  line-height: 1.2;
+  margin: 0;
+  margin-top: var(--bullet-gap, 0);
+}
+.bullet-list li:first-child {
+  margin-top: 0;
+}
+.bullet-list li::before {
+  content: '\25E6';
+  position: absolute;
+  left: -10pt;
+  top: 0;
+}
+.bullet-list li strong { font-weight: 700; }
+
+/* --- Projects --- */
+.project-entry {
+  display: flex;
+  margin: 0;
+  margin-top: var(--bullet-gap, 0);
+}
+.project-entry:first-child {
+  margin-top: 0;
+}
+.project-bullet {
+  flex-shrink: 0;
+  width: 12pt;
+  font-size: 8pt;
+  line-height: 1.6;
+  font-weight: 700;
+}
+.project-content {
+  flex: 1;
+  min-width: 0;
+}
+.project-header {
+  display: flex;
+  align-items: baseline;
+  line-height: 1.2;
+}
+.project-title { font-weight: 700; }
+.project-tech { font-weight: 700; }
+.project-date { font-style: italic; flex-shrink: 0; }
+.project-bullets {
+  list-style: none;
+  padding-left: 12pt;
+  margin: 0;
+}
+.project-bullets li {
+  position: relative;
+  line-height: 1.2;
+  margin: 0;
+  margin-top: var(--bullet-gap, 0);
+}
+.project-bullets li:first-child {
+  margin-top: 0;
+}
+.project-bullets li::before {
+  content: '\25E6';
+  position: absolute;
+  left: -10pt;
+  top: 0;
+}
+.project-bullets li strong { font-weight: 700; }
+
+/* --- Layout Schema Utilities --- */
+
+/* No bullet marker */
+.edu-entry.no-bullet,
+.entry.no-bullet,
+.project-entry.no-bullet {
+  display: block;
+}
+
+/* Dynamic bold/italic from layout config */
+.field-bold { font-weight: 700; }
+.field-italic { font-style: italic; }
+
+/* Row spacer — pushes adjacent fields apart within a flex row */
+.row-spacer { flex: 1; }
+
+
+/* Contact layout variants */
+.resume-contact.contact-stacked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1pt;
+}
+.resume-contact.contact-stacked span + span::before {
+  content: none;
+}
+
+.resume-contact.contact-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 8pt;
+  justify-items: center;
+}
+.resume-contact.contact-two-col span + span::before {
+  content: none;
+}
+
+/* Dynamic contact separator via CSS variable */
+.resume-contact span + span::before {
+  content: var(--contact-sep, ' | ');
+}
+
+/* Skills section grid layout */
+.skills-section.skills-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12pt;
+}
+
+/* Hide bullet marker on skill rows */
+.skill-row.no-bullet::before {
+  content: none;
+}
+
+/* Project tech stack on separate row */
+.project-tech-row {
+  line-height: 1.2;
+  font-style: italic;
+}
+
+/* --- Professional Summary --- */
+.resume-summary {
+  font-size: 9.5pt;
+  line-height: 1.3;
+  margin: 1pt 0 0 0;
+}
+
+/* --- Overflow Warning --- */
+.overflow-warning {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: #ff4444;
+  color: #fff;
+  text-align: center;
+  font-size: 9pt;
+  padding: 2pt 0;
+  font-family: system-ui, sans-serif;
+  z-index: 10;
+}
+
+/* --- Page Number --- */
+.page-number {
+  position: absolute;
+  bottom: 8pt;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 8pt;
+  color: #999;
+  font-family: system-ui, sans-serif;
+}
+
+/* --- Hidden measure div --- */
+.resume-measure {
+  overflow: visible !important;
+}
+
+/* --- Print --- */
+@media print {
+  body * { visibility: hidden; }
+  .resume-page, .resume-page * { visibility: visible; }
+  .resume-measure, .resume-measure * { visibility: hidden !important; display: none !important; }
+  .resume-page {
+    position: relative;
+    left: 0; top: 0;
+    margin: 0;
+    box-shadow: none;
+    transform: none !important;
+    width: 8.5in;
+    height: 11in;
+    page-break-after: always;
+  }
+  .resume-page:last-child { page-break-after: auto; }
+  .resume-preview-wrapper {
+    transform: none !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+  .resume-pages-stack {
+    height: auto !important;
+  }
+  .page-number { display: none !important; }
+  @page { size: letter; margin: 0; }
+}
+
+/* --- Sortable Section Drag --- */
+.sortable-section {
+  position: relative;
+}
+.sortable-section:hover .section-drag-handle {
+  opacity: 1;
+}
+.sortable-section.dragging {
+  z-index: 100;
+}
+.section-drag-handle {
+  position: absolute;
+  left: -20px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  background: none;
+  border: none;
+  cursor: grab;
+  font-size: 12px;
+  color: #999;
+  padding: 2px 4px;
+  line-height: 1;
+  transition: opacity 0.15s;
+  z-index: 10;
+  font-family: system-ui, sans-serif;
+}
+.section-drag-handle:hover {
+  color: #555;
+}
+.section-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* --- Editable Text (inline editing) --- */
+.editable-text-wrap {
+  position: relative;
+  display: inline;
+}
+.editable-text {
+  cursor: text;
+  border-radius: 2px;
+  transition: outline 0.15s;
+  outline: 1px solid transparent;
+  outline-offset: 1px;
+}
+.editable-text:hover {
+  outline: 1px dashed #ccc;
+}
+.editable-text:focus {
+  outline: 1px solid #4a90d9;
+  outline-offset: 1px;
+  background: rgba(74, 144, 217, 0.04);
+}
+/* Resize handles — left and right */
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+  opacity: 0;
+  z-index: 5;
+  transition: opacity 0.15s;
+}
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 14px;
+  border-radius: 1px;
+  background: #4a90d9;
+}
+.resize-handle-left {
+  left: -4px;
+}
+.resize-handle-left::after {
+  left: 0;
+}
+.resize-handle-right {
+  right: -4px;
+}
+.resize-handle-right::after {
+  right: 0;
+}
+.editable-text-wrap:hover .resize-handle {
+  opacity: 1;
+}
+.editable-text:empty::before {
+  content: attr(data-placeholder);
+  color: #bbb;
+  font-style: italic;
+}
+
+/* Hide drag handles and editable outlines in print */
+@media print {
+  .section-drag-handle { display: none !important; }
+  .editable-text { outline: none !important; cursor: default !important; }
+  .editable-text:hover { outline: none !important; }
+  .resize-handle { display: none !important; }
+}
+
+/* --- Screen Preview --- */
+.resume-preview-container {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+  overflow: auto;
+  background: #e8eaef;
+  min-height: 100%;
+  position: relative;
+}
+.resume-pages-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.resume-page-slot {
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.resume-preview-wrapper {
+  transform-origin: top center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.04);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
