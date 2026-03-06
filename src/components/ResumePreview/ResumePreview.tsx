@@ -1,3 +1,4 @@
+import React from 'react';
 import { useRef, useEffect, useState, useCallback } from 'react';
 import {
   DndContext,
@@ -24,6 +25,7 @@ import { ProjectsSection } from './ProjectsSection';
 import { CustomSectionPreview } from './CustomSectionPreview';
 import { SectionHeading } from './SectionHeading';
 import { EditableText } from './EditableText';
+import { GapHandle } from './GapHandle';
 import '../../styles/resume.css';
 
 function SortableSectionBlock({ id, children }: { id: string; children: React.ReactNode }) {
@@ -65,6 +67,7 @@ export function ResumePreview() {
   const data = useResumeStore((s) => s.data);
   const moveSectionOrder = useResumeStore((s) => s.moveSectionOrder);
   const updateSummary = useResumeStore((s) => s.updateSummary);
+  const updateSectionGap = useResumeStore((s) => s.updateSectionGap);
   const fmt = data.format || DEFAULT_FORMAT;
   const lo = data.layout ?? DEFAULT_LAYOUT;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -301,10 +304,20 @@ export function ResumePreview() {
                       {pageSections.map((block, i) => {
                         const globalIdx = pages.slice(0, pageIdx).reduce((sum, p) => sum + p.length, 0) + i;
                         const key = sectionKeys[globalIdx];
+                        const showGap = key !== 'header' && (i > 0 || pageIdx > 0);
                         return (
-                          <SortableSectionBlock key={key} id={key}>
-                            {block}
-                          </SortableSectionBlock>
+                          <React.Fragment key={key}>
+                            {showGap && (
+                              <GapHandle
+                                gap={data.sectionGaps?.[key] ?? fmt.sectionSpacing}
+                                defaultGap={fmt.sectionSpacing}
+                                onChange={(newGap) => updateSectionGap(key, newGap)}
+                              />
+                            )}
+                            <SortableSectionBlock id={key}>
+                              {block}
+                            </SortableSectionBlock>
+                          </React.Fragment>
                         );
                       })}
                       {totalPages > 1 && (

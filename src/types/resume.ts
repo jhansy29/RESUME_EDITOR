@@ -230,4 +230,5 @@ export interface ResumeData {
   customSections?: CustomSection[];
   sectionOrder?: string[];
   sectionGaps?: Record<string, number>;  // per-section top margin overrides in pt
+  entryGaps?: Record<string, number>;    // per-entry top margin overrides in pt, keyed by entry id
 }

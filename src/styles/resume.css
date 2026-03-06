@@ -151,26 +151,21 @@
 
 /* --- Sub-bullets (◦) --- */
 .bullet-list {
-  list-style: none;
   padding-left: 12pt;
   margin: 0;
 }
-.bullet-list li {
+.bullet-list .bullet-item {
   position: relative;
   line-height: 1.2;
   margin: 0;
-  margin-top: var(--bullet-gap, 0);
 }
-.bullet-list li:first-child {
-  margin-top: 0;
-}
-.bullet-list li::before {
+.bullet-list .bullet-item::before {
   content: '\25E6';
   position: absolute;
   left: -10pt;
   top: 0;
 }
-.bullet-list li strong { font-weight: 700; }
+.bullet-list .bullet-item strong { font-weight: 700; }
 
 /* --- Projects --- */
 .project-entry {
@@ -201,26 +196,21 @@
 .project-tech { font-weight: 700; }
 .project-date { font-style: italic; flex-shrink: 0; }
 .project-bullets {
-  list-style: none;
   padding-left: 12pt;
   margin: 0;
 }
-.project-bullets li {
+.project-bullets .bullet-item {
   position: relative;
   line-height: 1.2;
   margin: 0;
-  margin-top: var(--bullet-gap, 0);
 }
-.project-bullets li:first-child {
-  margin-top: 0;
-}
-.project-bullets li::before {
+.project-bullets .bullet-item::before {
   content: '\25E6';
   position: absolute;
   left: -10pt;
   top: 0;
 }
-.project-bullets li strong { font-weight: 700; }
+.project-bullets .bullet-item strong { font-weight: 700; }
 
 /* --- Layout Schema Utilities --- */
 
@@ -385,7 +375,9 @@
 /* --- Editable Text (inline editing) --- */
 .editable-text-wrap {
   position: relative;
-  display: inline;
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .editable-text {
   cursor: text;
@@ -444,12 +436,114 @@
   font-style: italic;
 }
 
-/* Hide drag handles and editable outlines in print */
+/* Hide drag handles, gap handles, and editable outlines in print */
 @media print {
   .section-drag-handle { display: none !important; }
+  .gap-handle-zone, .gap-handle-zone-h { display: none !important; }
   .editable-text { outline: none !important; cursor: default !important; }
   .editable-text:hover { outline: none !important; }
   .resize-handle { display: none !important; }
+}
+
+/* --- Gap Handle (Figma-style spacing control) --- */
+.gap-handle-zone {
+  position: relative;
+  height: 0;
+  z-index: 5;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.gap-handle-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  cursor: ns-resize;
+  transition: background 0.15s;
+  border-top: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+}
+
+.gap-handle-overlay:hover {
+  background: rgba(74, 144, 217, 0.08);
+  border-top-color: rgba(74, 144, 217, 0.35);
+  border-bottom-color: rgba(74, 144, 217, 0.35);
+  border-top-style: dashed;
+  border-bottom-style: dashed;
+}
+
+.gap-handle-label {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  background: #4a90d9;
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 3px;
+  line-height: 1.4;
+  opacity: 0;
+  transition: opacity 0.15s;
+  user-select: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.gap-handle-label.gap-handle-override {
+  background: #e67e22;
+}
+
+.gap-handle-overlay:hover .gap-handle-label {
+  opacity: 1;
+}
+
+.gap-handle-input {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 9px;
+  width: 40px;
+  text-align: center;
+  border: 1px solid #4a90d9;
+  border-radius: 3px;
+  outline: none;
+  padding: 1px 2px;
+  background: #fff;
+}
+
+/* --- Horizontal Gap Handle --- */
+.gap-handle-zone-h {
+  position: relative;
+  align-self: stretch;
+  flex-shrink: 0;
+  cursor: ew-resize;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+.gap-handle-zone-h:hover {
+  background: rgba(74, 144, 217, 0.12);
+  outline: 1px dashed rgba(74, 144, 217, 0.5);
+  outline-offset: -1px;
+}
+
+.gap-handle-zone-h .gap-handle-label {
+  position: absolute;
+  top: -14px;
+  white-space: nowrap;
+}
+
+.gap-handle-zone-h:hover .gap-handle-label {
+  opacity: 1;
+}
+
+.gap-handle-zone-h .gap-handle-input {
+  position: absolute;
+  top: -16px;
 }
 
 /* --- Screen Preview --- */

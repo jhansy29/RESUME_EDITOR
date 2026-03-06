@@ -78,19 +78,19 @@ export const EditableText = memo(function EditableText({ value, onSave, classNam
   const startResize = useCallback((side: 'left' | 'right', e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const el = ref.current;
-    if (!el) return;
+    const wrap = wrapRef.current;
+    if (!wrap) return;
 
     const startX = e.clientX;
-    const startWidth = el.offsetWidth;
+    const startWidth = wrap.offsetWidth;
 
     function onMove(moveEvent: MouseEvent) {
       const dx = moveEvent.clientX - startX;
       const newWidth = side === 'right'
         ? Math.max(20, startWidth + dx)
         : Math.max(20, startWidth - dx);
-      el!.style.width = `${newWidth}px`;
-      el!.style.flexShrink = '0';
+      wrap!.style.width = `${newWidth}px`;
+      wrap!.style.flexShrink = '0';
     }
 
     function onUp() {

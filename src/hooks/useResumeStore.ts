@@ -6,6 +6,16 @@ import { DEFAULT_FORMAT, DEFAULT_LAYOUT } from '../types/resume';
 import { sampleResume } from '../data/sampleResume';
 import { patchResume } from '../api/resumeApi';
 
+const STORAGE_KEY = 'resume-editor-data';
+
+function loadInitialData(): ResumeData {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore corrupt data */ }
+  return sampleResume;
+}
+
 export type ResumeSection = 'contact' | 'education' | 'skills' | 'experience' | 'projects' | 'summary' | `custom-${string}`;
 
 const MAX_HISTORY = 50;
@@ -77,6 +87,7 @@ interface ResumeStore {
 
   // Section Gaps
   updateSectionGap: (sectionKey: string, gap: number) => void;
+  updateEntryGap: (entryId: string, gap: number) => void;
 
   // Formatting
   updateFormat: <K extends keyof FormatSettings>(key: K, value: FormatSettings[K]) => void;
@@ -108,7 +119,7 @@ function debouncedSave(getState: () => ResumeStore) {
       patchResume(mongoId, data as unknown as Record<string, unknown>).catch(console.error);
     }
     // Also save to localStorage as fallback
-    try { localStorage.setItem('resume-editor-data', JSON.stringify(data)); } catch { /* ignore */ }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch { /* ignore */ }
   }, 800);
 }
 
@@ -129,7 +140,7 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
   };
 
   return {
-    data: sampleResume,
+    data: loadInitialData(),
     activeSection: null,
     mongoId: null,
     loading: true,
@@ -360,6 +371,11 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       setAndSave(produce((s: ResumeStore) => {
         if (!s.data.sectionGaps) s.data.sectionGaps = {};
         s.data.sectionGaps[sectionKey] = gap;
+      })),
+    updateEntryGap: (entryId, gap) =>
+      setAndSave(produce((s: ResumeStore) => {
+        if (!s.data.entryGaps) s.data.entryGaps = {};
+        s.data.entryGaps[entryId] = gap;
       })),
 
     // Formatting
