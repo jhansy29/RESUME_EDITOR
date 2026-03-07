@@ -96,116 +96,6 @@ Rules:
 - Return ONLY the JSON object, nothing else
 - IMPORTANT: Include a "sectionOrder" array listing ALL sections in the EXACT order they appear in the original resume. Use these keys for standard sections: "header", "education", "summary", "skills", "experience", "projects". For custom sections, use "custom-cs-1", "custom-cs-2", etc. matching the customSections ids. The header (name/contact) is always first. Look at the order the sections appear in the resume text and replicate it exactly.`;
 
-const STYLE_PROMPT = `You are a resume design analyzer. You will receive resume text AND detailed font metadata extracted from the PDF (font names, sizes, bold/italic flags, positions, and text samples for each font).
-
-Use this metadata to generate a precise JSON object with three keys: "format", "layout", and "css" that EXACTLY replicate the original resume's visual style AND structural layout.
-
-Return ONLY valid JSON — no markdown, no backticks, no explanation.
-
-{
-  "format": {
-    "fontFamily": "string — CSS font-family stack based on the ACTUAL fonts detected in the metadata. Map detected fonts: CMR/Computer Modern/cmr → 'Computer Modern Serif', Cambria, 'Times New Roman', serif. TimesNewRoman → 'Times New Roman', serif. Arial/Helvetica → Arial, Helvetica, sans-serif. Calibri → Calibri, Arial, sans-serif. Garamond → Garamond, Georgia, serif",
-    "fontSize": "number — body text size in pt (use the most common font size from the metadata)",
-    "lineHeight": "number — unitless multiplier (estimate from vertical spacing between text lines in metadata)",
-    "marginTop": "number — top margin in inches (calculate from the topmost text Y position)",
-    "marginBottom": "number — bottom margin in inches",
-    "marginLeft": "number — left margin in inches (calculate from the leftmost text X position)",
-    "marginRight": "number — right margin in inches",
-    "nameFontSize": "number — the largest font size detected (the person's name)",
-    "contactFontSize": "number — font size used for contact info line(s)",
-    "headingFontSize": "number — font size used for section headings like EDUCATION, EXPERIENCE",
-    "sectionSpacing": "number — gap above section headings in pt (estimate from Y gaps between sections)",
-    "bulletSpacing": "number — gap between bullet items in pt (0-3pt)"
-  },
-  "layout": {
-    "header": {
-      "nameAlignment": "center | left | right",
-      "contactLayout": "inline | stacked | two-column",
-      "contactSeparator": "' | ' or ' · ' or ' — ' or ', ' or ' / '",
-      "contactFields": ["phone", "email", "linkedin", "github", "portfolio", "googleScholar"]
-    },
-    "education": {
-      "rows": "array of arrays of RowSegments. Each RowSegment is {type:'field'|'spacer', value:'fieldName', className:'css-class'}. A 'spacer' segment ({type:'spacer',value:''}) is a flexible gap that pushes adjacent fields apart — use spacers to position fields anywhere in a row. Fields: school, location, degree, gpa, dates, coursework. Example: [[{type:'field',value:'school',className:'edu-school'},{type:'spacer',value:''},{type:'field',value:'location',className:'edu-location'}]] puts school left, location right. Three fields with spacers between them distributes them evenly.",
-      "showEntryBulletMarker": "boolean",
-      "boldField": "string|null — 'school' or 'degree' or null",
-      "italicField": "string|null — 'degree' or 'dates' or null",
-      "showCoursework": "boolean"
-    },
-    "experience": {
-      "rows": "same RowSegment format with spacers. Fields: company, location, role, dates. Default: [[{type:'field',value:'company',className:'entry-company'},{type:'spacer',value:''},{type:'field',value:'location',className:'entry-location'}],[{type:'field',value:'role',className:'entry-role'},{type:'spacer',value:''},{type:'field',value:'dates',className:'entry-dates'}]]",
-      "showEntryBulletMarker": "boolean",
-      "boldField": "'company' or 'role'",
-      "italicField": "'role' or 'dates' or null"
-    },
-    "skills": {
-      "showCategories": "boolean — true if skills grouped by category labels",
-      "showBulletMarker": "boolean",
-      "displayMode": "list | grid",
-      "skillSeparator": "', ' or ' | ' or ' · '"
-    },
-    "projects": {
-      "rows": "same RowSegment format with spacers. Fields: title, techStack, date.",
-      "showEntryBulletMarker": "boolean",
-      "techStackPosition": "inline | below | none",
-      "boldField": "'title' or 'techStack'",
-      "italicField": "string|null"
-    }
-  },
-  "css": "string — complete CSS overrides for all resume classes"
-}
-
-LAYOUT DETECTION RULES:
-1. Analyze the ROW STRUCTURE: if company and location are on the SAME line, they go in one row. If role and dates are on a SECOND line, they go in a second row.
-2. If NO bullet markers before entries, set showEntryBulletMarker to false.
-3. If name is LEFT-aligned, set nameAlignment to 'left'.
-4. If contact items are on SEPARATE LINES, set contactLayout to 'stacked'.
-5. If skills have NO category labels, set showCategories to false.
-6. Detect which field is BOLD from font metadata and set boldField.
-7. Detect which field is ITALIC and set italicField.
-8. IMPORTANT: Do NOT set font-weight/font-style directly on .entry-company, .entry-role, .edu-school, .edu-degree in CSS — the layout boldField/italicField adds .field-bold/.field-italic classes dynamically.
-9. Use SPACER segments ({type:'spacer',value:''}) to position fields within rows. If a field appears on the RIGHT side of a line, put a spacer BEFORE it. If a field is CENTERED between two others, put spacers on both sides of it. If fields are grouped together on the left with one field on the right, put a single spacer between the group and the right field.
-
-The CSS must style these classes to EXACTLY match the original document:
-
-.resume-page { /* font, color */ }
-.resume-name { /* name: size, weight, alignment, text-transform */ }
-.resume-contact { /* contact line: alignment, separator */ }
-.resume-contact span + span::before { /* separator character: ' | ' or ' · ' or ' — ' */ }
-.section-heading { /* CRITICAL: section titles — detect: is it small-caps (font-variant: small-caps)? ALL CAPS (text-transform: uppercase)? Bold? What border/line style? letter-spacing? */ }
-.edu-entry, .edu-bullet, .edu-content { /* education layout */ }
-.edu-row-1 { /* first row: school, gpa, location */ }
-.edu-row-2 { /* second row: degree, dates. For SINGLE-ROW education layouts where everything is on one line, set .edu-content { display: flex; flex-wrap: wrap; align-items: baseline; } and .edu-row-1, .edu-row-2 { display: contents; } so all items flow into one line. For TWO-ROW layouts, keep both rows as display:flex. Use spacer segments in layout.rows to control field positioning — do NOT use justify-content:space-between */ }
-.edu-school { /* school name weight */ }
-.edu-degree { /* italic or normal */ }
-.edu-gpa { /* GPA styling */ }
-.edu-location { /* location styling — use margin-left:auto to push right */ }
-.edu-dates { /* date styling */ }
-.skill-row { /* skill line layout */ }
-.skill-row::before { /* bullet: '\\2022' (•), '\\25E6' (◦), '\\25AA' (▪), '\\2013' (–), or none */ }
-.skill-category { /* category label weight */ }
-.entry { /* experience entry */ }
-.entry-bullet { /* entry-level bullet character and size */ }
-.entry-company { /* company name weight */ }
-.entry-role { /* role italic/normal */ }
-.entry-dates { /* dates italic/normal */ }
-.bullet-list li::before { /* sub-bullet character for experience: '\\25E6' (◦), '\\2022' (•), '\\2013' (–) */ }
-.project-entry, .project-bullet, .project-content { /* project layout */ }
-.project-title { /* project name weight */ }
-.project-bullets li::before { /* project sub-bullet character */ }
-.resume-summary { /* summary styling */ }
-
-CRITICAL DETECTION RULES using the font metadata:
-1. If font names contain "CMR", "cmr", "Computer Modern", "lmr" → it's LaTeX. Use Computer Modern, small-caps headings, border-bottom on headings, bullet hierarchy (• for entries, ◦ for sub-items)
-2. If you see fonts like "CMSSBX" or "cmb" → bold variant of Computer Modern
-3. If you see "CMTI" or "cmti" → italic variant of Computer Modern
-4. If you see "CMCSC" or "cmcsc" → small-caps variant (used for section headings in LaTeX resumes)
-5. Look at the actual font sizes in the metadata to set exact pt values
-6. Look at text positions (x,y) to calculate margins and spacing
-7. Detect bullet characters from the text content (•, ◦, –, ▪)
-8. If a heading text appears with mixed case like "Education" but uses a small-caps font, set font-variant: small-caps and text-transform: none
-
-Return ONLY the JSON object.`;
-
 // Extract text + font metadata from PDF using pdfjs-dist
 async function extractPdfWithMetadata(buffer) {
   const data = new Uint8Array(buffer);
@@ -1115,16 +1005,10 @@ generateRouter.post('/', upload.single('file'), async (req, res) => {
       }
 
       console.log('  Derived format:', JSON.stringify(styleData.format, null, 2));
-    } else if (html) {
-      const styleInput = `Here is the resume text:\n\n${text}\n\n---\n\nHere is the HTML from the DOCX (contains formatting hints like bold, italic, headings, font info):\n\n${html}`;
-      console.log('Step 2/2: Analyzing style...');
-      styleData = await callAI(STYLE_PROMPT, styleInput);
-      console.log('AI calls completed');
     } else {
-      const styleInput = `Here is the resume text. Analyze the formatting patterns (heading styles, spacing, bullet characters, alignment, font choices) and replicate them:\n\n${text}`;
-      console.log('Step 2/2: Analyzing style...');
-      styleData = await callAI(STYLE_PROMPT, styleInput);
-      console.log('AI calls completed');
+      // DOCX and plain text: use defaults (layout detected deterministically from HTML when available)
+      console.log('Step 2/2: Using default style (deterministic)...');
+      styleData = { format: {}, layout: {}, css: '' };
     }
 
     const clamp = (val, min, max, fallback) => {
@@ -1257,8 +1141,7 @@ generateRouter.post('/', upload.single('file'), async (req, res) => {
     // Fall back to AI layout only for plain text uploads
     const htmlLayout = html ? detectLayoutFromHtml(html, resumeData) : null;
     const pdfLayout = textItems ? detectLayoutFromPdf(textItems, resumeData) : null;
-    const aiLayout = styleData.layout || {};
-    const sourceLayout = htmlLayout || pdfLayout || aiLayout;
+    const sourceLayout = htmlLayout || pdfLayout || {};
     const layout = {
       header: { ...DEFAULT_LAYOUT.header, ...sourceLayout.header },
       education: { ...DEFAULT_LAYOUT.education, ...sourceLayout.education, rows: Array.isArray(sourceLayout.education?.rows) && sourceLayout.education.rows.length > 0 ? sourceLayout.education.rows : DEFAULT_LAYOUT.education.rows },
