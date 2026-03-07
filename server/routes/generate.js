@@ -3,13 +3,11 @@ import multer from 'multer';
 import { extractRawText, convertToHtml } from 'mammoth';
 import { Template } from '../models/Template.js';
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { callAI } from '../utils/ai.js';
 
 export const generateRouter = Router();
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-
-const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
-const NVIDIA_API_KEY = process.env.NVIDIA_API_KEY;
 
 const CONTENT_PROMPT = `You are a resume parser. Given raw resume text, extract it into a structured JSON object.
 Return ONLY valid JSON — no markdown, no backticks, no explanation.
@@ -637,6 +635,336 @@ function detectLayoutFromHtml(html, resumeData) {
   return layout;
 }
 
+// Detect layout from PDF text items (positional + font data)
+function detectLayoutFromPdf(textItems, resumeData) {
+  if (!textItems || textItems.length === 0) return null;
+  console.log('  [PDF detect] Running PDF layout detection, textItems:', textItems.length);
+
+  const layout = {
+    header: {
+      nameAlignment: 'center',
+      contactLayout: 'inline',
+      contactSeparator: ' | ',
+      contactFields: ['phone', 'email', 'linkedin', 'github', 'portfolio', 'googleScholar'],
+    },
+    education: {
+      rows: [],
+      showEntryBulletMarker: false,
+      boldField: null,
+      italicField: null,
+      showCoursework: true,
+    },
+    experience: {
+      rows: [],
+      showEntryBulletMarker: false,
+      boldField: null,
+      italicField: null,
+    },
+    skills: {
+      showCategories: true,
+      showBulletMarker: true,
+      displayMode: 'list',
+      skillSeparator: ', ',
+    },
+    projects: {
+      rows: [],
+      showEntryBulletMarker: false,
+      boldField: null,
+      italicField: null,
+      techStackPosition: 'inline',
+    },
+  };
+
+  // Helper: find a text item that contains (or closely matches) a field value
+  const findItem = (value) => {
+    if (!value) return null;
+    const needle = value.substring(0, 20).toLowerCase();
+    const found = textItems.find(item => item.text.toLowerCase().includes(needle));
+    if (found) {
+      console.log(`    [findItem] "${value.substring(0, 30)}" -> matched "${found.text.substring(0, 30)}" at (${found.x}, ${found.y}) font=${found.fontName} bold=${found.bold} italic=${found.italic} size=${found.size}`);
+    } else {
+      console.log(`    [findItem] "${value.substring(0, 30)}" -> NOT FOUND`);
+    }
+    return found;
+  };
+
+  // Helper: check if a field value appears in a bold font
+  const isBoldInPdf = (value) => {
+    const item = findItem(value);
+    return item ? item.bold : false;
+  };
+
+  // Helper: check if a field value appears in an italic font
+  const isItalicInPdf = (value) => {
+    const item = findItem(value);
+    return item ? item.italic : false;
+  };
+
+  // Helper: check if two field values are on the same line (Y positions within tolerance)
+  const Y_TOLERANCE = 3; // points
+  const areSameLine = (valA, valB) => {
+    const itemA = findItem(valA);
+    const itemB = findItem(valB);
+    if (!itemA || !itemB) return false;
+    return Math.abs(itemA.y - itemB.y) <= Y_TOLERANCE;
+  };
+
+  // Helper: get Y position of a field value
+  const getY = (value) => {
+    const item = findItem(value);
+    return item ? item.y : Infinity;
+  };
+
+  // Helper: get X position of a field value
+  const getX = (value) => {
+    const item = findItem(value);
+    return item ? item.x : Infinity;
+  };
+
+  // Helper: detect field order by X position (left to right) — only fields that exist
+  const detectFieldOrderByX = (fields) => {
+    const positioned = [];
+    for (const [field, val] of Object.entries(fields)) {
+      if (val) {
+        const x = getX(val);
+        if (x < Infinity) positioned.push({ field, x });
+      }
+    }
+    positioned.sort((a, b) => a.x - b.x);
+    return positioned.map(p => p.field);
+  };
+
+  // Helper: build a row from ordered field names, inserting spacers for large X gaps
+  const X_SPACER_THRESHOLD = 100; // points gap to insert a spacer
+  const buildRow = (orderedFields, classPrefix, fieldValues) => {
+    const row = [];
+    for (let i = 0; i < orderedFields.length; i++) {
+      const field = orderedFields[i];
+      // Check X gap to next field — if large, insert a spacer
+      if (i < orderedFields.length - 1) {
+        const currVal = fieldValues[orderedFields[i]];
+        const nextVal = fieldValues[orderedFields[i + 1]];
+        const currItem = findItem(currVal);
+        const nextItem = findItem(nextVal);
+        row.push({ type: 'field', value: field, className: `${classPrefix}${field}` });
+        if (currItem && nextItem) {
+          // Estimate end of current text (x + approximate text width)
+          const currEnd = currItem.x + (currItem.text.length * currItem.size * 0.5);
+          const gap = nextItem.x - currEnd;
+          if (gap > X_SPACER_THRESHOLD) {
+            row.push({ type: 'spacer', value: '' });
+          }
+        }
+      } else {
+        // Last field — add spacer before it if there are multiple fields
+        if (orderedFields.length > 1) {
+          // Check if spacer was already added
+          const lastEntry = row[row.length - 1];
+          if (!lastEntry || lastEntry.type !== 'spacer') {
+            row.push({ type: 'spacer', value: '' });
+          }
+        }
+        row.push({ type: 'field', value: field, className: `${classPrefix}${field}` });
+      }
+    }
+    return row;
+  };
+
+  // Helper: group fields into rows by Y position
+  const groupIntoRows = (fields, classPrefix) => {
+    console.log(`    [groupIntoRows] prefix=${classPrefix} fields:`, Object.keys(fields));
+    const items = [];
+    for (const [field, val] of Object.entries(fields)) {
+      if (val) {
+        const y = getY(val);
+        const x = getX(val);
+        if (y < Infinity) {
+          items.push({ field, y, x, val });
+          console.log(`      field="${field}" x=${x} y=${y} val="${val.substring(0, 30)}"`);
+        }
+      }
+    }
+    if (items.length === 0) {
+      console.log('    [groupIntoRows] No items found, returning empty');
+      return [];
+    }
+
+    // Sort by Y first
+    items.sort((a, b) => a.y - b.y);
+
+    // Group by Y proximity
+    const rows = [];
+    let currentRow = [items[0]];
+    for (let i = 1; i < items.length; i++) {
+      if (Math.abs(items[i].y - currentRow[0].y) <= Y_TOLERANCE) {
+        currentRow.push(items[i]);
+      } else {
+        rows.push(currentRow);
+        currentRow = [items[i]];
+      }
+    }
+    rows.push(currentRow);
+
+    console.log(`    [groupIntoRows] Grouped into ${rows.length} row(s):`);
+    rows.forEach((rowItems, i) => {
+      console.log(`      Row ${i + 1}: [${rowItems.map(r => `${r.field}(x=${r.x},y=${r.y})`).join(', ')}]`);
+    });
+
+    // Sort each row by X and build row segments
+    return rows.map(rowItems => {
+      rowItems.sort((a, b) => a.x - b.x);
+      const orderedFields = rowItems.map(r => r.field);
+      const fieldValues = Object.fromEntries(rowItems.map(r => [r.field, r.val]));
+      const built = buildRow(orderedFields, classPrefix, fieldValues);
+      console.log(`      -> Built row: [${built.map(s => s.type === 'spacer' ? 'SPACER' : s.value).join(', ')}]`);
+      return built;
+    });
+  };
+
+  // --- Education layout detection ---
+  if (resumeData.education && resumeData.education.length > 0) {
+    const edu = resumeData.education[0];
+    const eduFields = {};
+    if (edu.school) eduFields.school = edu.school;
+    if (edu.degree) eduFields.degree = edu.degree;
+    if (edu.dates) eduFields.dates = edu.dates;
+    if (edu.gpa) eduFields.gpa = edu.gpa;
+    if (edu.location) eduFields.location = edu.location;
+
+    // Detect bold/italic
+    for (const [field, val] of Object.entries(eduFields)) {
+      if (!layout.education.boldField && isBoldInPdf(val)) layout.education.boldField = field;
+    }
+    for (const [field, val] of Object.entries(eduFields)) {
+      if (!layout.education.italicField && isItalicInPdf(val)) layout.education.italicField = field;
+    }
+
+    layout.education.rows = groupIntoRows(eduFields, 'edu-');
+    if (edu.coursework) {
+      layout.education.rows.push([{ type: 'field', value: 'coursework', className: 'edu-coursework' }]);
+    }
+    console.log('  [PDF detect] edu bold:', layout.education.boldField, 'italic:', layout.education.italicField, 'rows:', layout.education.rows.length);
+  }
+
+  // --- Experience layout detection ---
+  if (resumeData.experience && resumeData.experience.length > 0) {
+    const exp = resumeData.experience[0];
+    const expFields = {};
+    if (exp.company) expFields.company = exp.company;
+    if (exp.role) expFields.role = exp.role;
+    if (exp.dates) expFields.dates = exp.dates;
+    if (exp.location) expFields.location = exp.location;
+
+    for (const [field, val] of Object.entries(expFields)) {
+      if (!layout.experience.boldField && isBoldInPdf(val)) layout.experience.boldField = field;
+    }
+    for (const [field, val] of Object.entries(expFields)) {
+      if (!layout.experience.italicField && isItalicInPdf(val)) layout.experience.italicField = field;
+    }
+
+    layout.experience.rows = groupIntoRows(expFields, 'entry-');
+    console.log('  [PDF detect] exp bold:', layout.experience.boldField, 'italic:', layout.experience.italicField, 'rows:', layout.experience.rows.length);
+  }
+
+  // --- Projects layout detection ---
+  if (resumeData.projects && resumeData.projects.length > 0) {
+    const proj = resumeData.projects[0];
+    const projFields = {};
+    if (proj.title) projFields.title = proj.title;
+    if (proj.techStack) projFields.techStack = proj.techStack;
+    if (proj.date) projFields.date = proj.date;
+
+    for (const [field, val] of Object.entries(projFields)) {
+      if (!layout.projects.boldField && isBoldInPdf(val)) layout.projects.boldField = field;
+    }
+    for (const [field, val] of Object.entries(projFields)) {
+      if (!layout.projects.italicField && isItalicInPdf(val)) layout.projects.italicField = field;
+    }
+
+    layout.projects.rows = groupIntoRows(projFields, 'project-');
+  }
+
+  // --- Header detection ---
+  if (resumeData.contact?.name) {
+    console.log('  [PDF detect] Header: looking for name:', resumeData.contact.name);
+    const nameItem = findItem(resumeData.contact.name);
+    if (nameItem) {
+      const pageWidth = 612;
+      const nameCenter = nameItem.x + (nameItem.text.length * nameItem.size * 0.25);
+      const pageMid = pageWidth / 2;
+      layout.header.nameAlignment = Math.abs(nameCenter - pageMid) < 80 ? 'center' : 'left';
+      console.log(`  [PDF detect] Header: nameCenter=${Math.round(nameCenter)} pageMid=${pageMid} -> alignment=${layout.header.nameAlignment}`);
+    }
+  }
+
+  // Detect contact separator and layout (inline vs multi-line)
+  const nameItemForContact = findItem(resumeData.contact?.name);
+  const contactArea = nameItemForContact ? textItems.filter(item =>
+    item.y > nameItemForContact.y && item.y < nameItemForContact.y + 40
+  ) : [];
+  const contactText = contactArea.map(i => i.text).join('');
+  console.log('  [PDF detect] Contact area text:', contactText.substring(0, 200));
+
+  // Detect separator
+  if (contactText.includes('|')) layout.header.contactSeparator = ' | ';
+  else if (contactText.includes('·')) layout.header.contactSeparator = ' · ';
+  else if (contactText.includes('—')) layout.header.contactSeparator = ' — ';
+
+  // Detect multi-line contact: group contact items by Y position
+  // Only set 'stacked' if each line has ~1 item (truly vertical), not if inline items wrap to 2 lines
+  if (contactArea.length > 0) {
+    const contactYs = contactArea.map(i => i.y);
+    const uniqueYs = [];
+    for (const y of contactYs) {
+      if (!uniqueYs.some(uy => Math.abs(uy - y) <= Y_TOLERANCE)) {
+        uniqueYs.push(y);
+      }
+    }
+    const itemsPerLine = contactArea.length / uniqueYs.length;
+    console.log(`  [PDF detect] Contact: ${uniqueYs.length} Y lines, ${contactArea.length} items, ~${itemsPerLine.toFixed(1)} items/line`);
+    if (uniqueYs.length >= 3 && itemsPerLine <= 1.5) {
+      // Truly stacked: many lines with ~1 item each
+      layout.header.contactLayout = 'stacked';
+      console.log('  [PDF detect] Contact layout: stacked (vertical)');
+    } else {
+      // Inline (may wrap to 2 lines naturally)
+      layout.header.contactLayout = 'inline';
+      console.log('  [PDF detect] Contact layout: inline');
+    }
+  }
+  console.log('  [PDF detect] Contact separator:', layout.header.contactSeparator);
+
+  // Detect skill bullet markers and separators
+  if (resumeData.skills && resumeData.skills.length > 0) {
+    const firstSkill = resumeData.skills[0];
+    if (firstSkill.category) {
+      layout.skills.showCategories = true;
+      // Check if category label is bold
+      const catItem = findItem(firstSkill.category);
+      if (catItem && catItem.bold) layout.skills.showCategories = true;
+    }
+    // Check for bullet marker near skills
+    const skillItem = findItem(firstSkill.skills || firstSkill.category);
+    if (skillItem) {
+      const nearbyBullets = textItems.filter(item =>
+        Math.abs(item.y - skillItem.y) <= Y_TOLERANCE &&
+        item.x < skillItem.x &&
+        /[•◦▪–]/.test(item.text)
+      );
+      layout.skills.showBulletMarker = nearbyBullets.length > 0;
+    }
+    // Detect separator
+    const skillText = firstSkill.skills || '';
+    if (skillText.includes(' | ')) layout.skills.skillSeparator = ' | ';
+    else if (skillText.includes(' · ')) layout.skills.skillSeparator = ' · ';
+    else layout.skills.skillSeparator = ', ';
+  }
+
+  console.log('  [PDF detect] Layout detection complete');
+  console.log('  [PDF detect] Final layout:', JSON.stringify(layout, null, 2));
+  return layout;
+}
+
 async function extractContent(file) {
   const ext = file.originalname.toLowerCase().split('.').pop();
 
@@ -646,7 +974,7 @@ async function extractContent(file) {
 
   if (ext === 'pdf') {
     const result = await extractPdfWithMetadata(file.buffer);
-    return { text: result.text, html: null, fontMetadata: result.fontMetadata, margins: result.margins, isLaTeX: result.isLaTeX };
+    return { text: result.text, html: null, fontMetadata: result.fontMetadata, textItems: result.textItems, margins: result.margins, isLaTeX: result.isLaTeX };
   }
 
   if (ext === 'docx' || ext === 'doc') {
@@ -660,78 +988,13 @@ async function extractContent(file) {
   throw new Error(`Unsupported file type: .${ext}. Use .txt, .pdf, or .docx`);
 }
 
-async function callAI(systemPrompt, userContent) {
-  const payload = {
-    model: 'meta/llama-3.1-70b-instruct',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userContent },
-    ],
-    max_tokens: 16384,
-    temperature: 0.1,
-    top_p: 1.0,
-    stream: false,
-  };
-
-  console.log(`  -> Sending ${userContent.length} chars to AI...`);
-
-  const response = await fetch(NVIDIA_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${NVIDIA_API_KEY}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  console.log(`  <- Response status: ${response.status} ${response.statusText}`);
-
-  if (!response.ok) {
-    const err = await response.text();
-    console.error('NVIDIA API error body:', err || '(empty)');
-    console.error('Response headers:', Object.fromEntries(response.headers.entries()));
-    throw new Error(`AI service error (${response.status}): ${err || response.statusText}`);
-  }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-
-  console.log(`  <- finish_reason: ${data.choices?.[0]?.finish_reason}, content length: ${content?.length || 0}`);
-
-  if (!content) {
-    console.error('AI response had no content. Full message:', JSON.stringify(data.choices?.[0]?.message, null, 2));
-    throw new Error('AI returned empty content — model may need more max_tokens');
-  }
-
-  const cleaned = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    // Fix common JSON issues: unescaped newlines/tabs inside string values
-    const fixed = cleaned.replace(/(?<=:"[^"]*)\n/g, '\\n').replace(/(?<=:"[^"]*)\t/g, '\\t');
-    try {
-      return JSON.parse(fixed);
-    } catch {
-      // Last resort: extract format and css separately
-      const formatMatch = cleaned.match(/"format"\s*:\s*(\{[^}]+\})/);
-      const cssMatch = cleaned.match(/"css"\s*:\s*"([\s\S]*)"$/);
-      if (formatMatch) {
-        const format = JSON.parse(formatMatch[1]);
-        const css = cssMatch ? cssMatch[1].replace(/\\"/g, '"').replace(/\n/g, ' ') : '';
-        return { format, css };
-      }
-      throw new Error('Failed to parse AI response as JSON');
-    }
-  }
-}
-
 // File upload route
 generateRouter.post('/', upload.single('file'), async (req, res) => {
   try {
     let text = '';
     let html = null;
     let fontMetadata = null;
+    let textItems = null;
     let margins = null;
     let isLaTeX = false;
     const name = req.body.name;
@@ -741,6 +1004,7 @@ generateRouter.post('/', upload.single('file'), async (req, res) => {
       text = result.text;
       html = result.html;
       fontMetadata = result.fontMetadata;
+      textItems = result.textItems || null;
       margins = result.margins;
       isLaTeX = result.isLaTeX;
     } else if (req.body.text) {
@@ -754,6 +1018,20 @@ generateRouter.post('/', upload.single('file'), async (req, res) => {
     // Run content extraction first, then style analysis (sequential to avoid rate limits)
     console.log('Step 1/2: Extracting resume content...');
     const resumeData = await callAI(CONTENT_PROMPT, `Parse this resume into the JSON format:\n\n${text}`);
+
+    // Clean contact fields — strip separator characters (|, ·, —) that PDF text extraction may include
+    if (resumeData.contact) {
+      const stripSeparators = (val) => val ? val.replace(/^[\s|·—]+|[\s|·—]+$/g, '').trim() : val;
+      for (const key of Object.keys(resumeData.contact)) {
+        if (typeof resumeData.contact[key] === 'string') {
+          const cleaned = stripSeparators(resumeData.contact[key]);
+          if (cleaned !== resumeData.contact[key]) {
+            console.log(`  [clean] contact.${key}: "${resumeData.contact[key]}" -> "${cleaned}"`);
+            resumeData.contact[key] = cleaned;
+          }
+        }
+      }
+    }
 
     // Prefer LLM-detected section order, fall back to regex-based detection
     let sectionOrder;
@@ -771,21 +1049,83 @@ generateRouter.post('/', upload.single('file'), async (req, res) => {
       console.log('  Using regex-detected section order:', sectionOrder);
     }
 
-    // Build style analysis input with font metadata when available
-    let styleInput;
+    // Build style analysis — skip AI for PDF (use deterministic extraction), keep AI for DOCX/text
+    let styleData = {};
     if (fontMetadata && fontMetadata.length > 0) {
-      const metadataStr = JSON.stringify({ fonts: fontMetadata, margins, isLaTeX }, null, 2);
-      styleInput = `Here is the resume text:\n\n${text}\n\n---\n\nHere is the FONT METADATA extracted from the PDF. This contains the actual font names, sizes, and text samples. Use this to determine the exact fonts, sizes, and styling:\n\n${metadataStr}`;
+      // PDF: extract format deterministically from font metadata
+      console.log('Step 2/2: Extracting style from PDF metadata (no AI call)...');
       console.log(`  Font metadata: ${fontMetadata.length} fonts detected: ${fontMetadata.map(f => f.fontName).join(', ')}`);
-    } else if (html) {
-      styleInput = `Here is the resume text:\n\n${text}\n\n---\n\nHere is the HTML from the DOCX (contains formatting hints like bold, italic, headings, font info):\n\n${html}`;
-    } else {
-      styleInput = `Here is the resume text. Analyze the formatting patterns (heading styles, spacing, bullet characters, alignment, font choices) and replicate them:\n\n${text}`;
-    }
+      styleData = { format: {}, layout: {}, css: '' };
 
-    console.log('Step 2/2: Analyzing style...');
-    const styleData = await callAI(STYLE_PROMPT, styleInput);
-    console.log('AI calls completed');
+      // Derive font family from detected fonts
+      const isComputerModern = fontMetadata.some(f => f.isComputerModern);
+      const isSerif = fontMetadata.some(f => f.isSerif);
+      const isSansSerif = fontMetadata.some(f => f.isSansSerif);
+      if (isComputerModern) {
+        styleData.format.fontFamily = "'Computer Modern Serif', Cambria, 'Times New Roman', serif";
+      } else if (isSansSerif) {
+        const sansFont = fontMetadata.find(f => f.isSansSerif);
+        styleData.format.fontFamily = sansFont ? `'${sansFont.fontName}', Arial, Helvetica, sans-serif` : "'Calibri', Arial, sans-serif";
+      } else if (isSerif) {
+        const serifFont = fontMetadata.find(f => f.isSerif && !f.isComputerModern);
+        styleData.format.fontFamily = serifFont ? `'${serifFont.fontName}', Georgia, serif` : "'Times New Roman', Georgia, serif";
+      }
+
+      // Derive font sizes from metadata
+      const bodyFonts = fontMetadata.filter(f => f.role === 'body' && f.occurrences > 3);
+      const allSizes = bodyFonts.flatMap(f => f.sizes);
+      if (allSizes.length > 0) {
+        // Most common body size
+        const sizeCounts = {};
+        allSizes.forEach(s => { sizeCounts[s] = (sizeCounts[s] || 0) + 1; });
+        const bodySize = Number(Object.entries(sizeCounts).sort((a, b) => b[1] - a[1])[0][0]);
+        styleData.format.fontSize = bodySize;
+        console.log(`  Body font size: ${bodySize}pt`);
+      }
+
+      // Name size = largest font size across all fonts
+      const allFontSizes = fontMetadata.flatMap(f => f.sizes);
+      if (allFontSizes.length > 0) {
+        styleData.format.nameFontSize = Math.max(...allFontSizes);
+        console.log(`  Name font size: ${styleData.format.nameFontSize}pt`);
+      }
+
+      // Heading size from bold or small-caps fonts
+      const headingFonts = fontMetadata.filter(f => f.smallCaps || (f.bold && f.role.includes('heading')));
+      if (headingFonts.length > 0) {
+        const headingSizes = headingFonts.flatMap(f => f.sizes);
+        styleData.format.headingFontSize = headingSizes.length > 0 ? Math.max(...headingSizes) : undefined;
+        console.log(`  Heading font size: ${styleData.format.headingFontSize}pt`);
+      }
+
+      // Contact size — second smallest or italic font near top
+      const italicFonts = fontMetadata.filter(f => f.italic);
+      if (italicFonts.length > 0) {
+        const contactSizes = italicFonts.flatMap(f => f.sizes);
+        styleData.format.contactFontSize = contactSizes.length > 0 ? Math.min(...contactSizes) : undefined;
+      }
+
+      // Margins from PDF metadata
+      if (margins) {
+        styleData.format.marginLeft = margins.leftInches;
+        styleData.format.marginTop = margins.topInches;
+        styleData.format.marginRight = margins.leftInches; // assume symmetric
+        styleData.format.marginBottom = margins.topInches;
+        console.log(`  Margins: left=${margins.leftInches}in top=${margins.topInches}in`);
+      }
+
+      console.log('  Derived format:', JSON.stringify(styleData.format, null, 2));
+    } else if (html) {
+      const styleInput = `Here is the resume text:\n\n${text}\n\n---\n\nHere is the HTML from the DOCX (contains formatting hints like bold, italic, headings, font info):\n\n${html}`;
+      console.log('Step 2/2: Analyzing style...');
+      styleData = await callAI(STYLE_PROMPT, styleInput);
+      console.log('AI calls completed');
+    } else {
+      const styleInput = `Here is the resume text. Analyze the formatting patterns (heading styles, spacing, bullet characters, alignment, font choices) and replicate them:\n\n${text}`;
+      console.log('Step 2/2: Analyzing style...');
+      styleData = await callAI(STYLE_PROMPT, styleInput);
+      console.log('AI calls completed');
+    }
 
     const clamp = (val, min, max, fallback) => {
       const n = Number(val);
@@ -816,7 +1156,7 @@ generateRouter.post('/', upload.single('file'), async (req, res) => {
 .resume-page { font-family: ${ff}; color: #000; }
 .resume-name { font-size: ${format.nameFontSize}pt; font-weight: 700; text-align: center; margin: 0; line-height: 1.1; }
 .resume-contact { text-align: center; font-size: ${format.contactFontSize}pt; margin: 1pt 0 0 0; line-height: 1.2; }
-.resume-contact span + span::before { content: ' | '; margin: 0 2pt; }
+.resume-contact > span + span::before { content: ' | '; margin: 0 2pt; }
 .contact-link { color: inherit; text-decoration: none; }
 .contact-link:hover { text-decoration: underline; }
 .section-heading { font-size: ${format.headingFontSize}pt; font-weight: 700; text-transform: uppercase; border-bottom: 1pt solid #000; margin: ${format.sectionSpacing}pt 0 2pt 0; padding-bottom: 1pt; line-height: 1.3; }
@@ -913,11 +1253,12 @@ generateRouter.post('/', upload.single('file'), async (req, res) => {
       },
     };
 
-    // Prefer deterministic HTML-based layout detection for DOCX uploads
-    // Fall back to AI layout for PDF/text uploads
+    // Prefer deterministic layout detection (HTML for DOCX, positional for PDF)
+    // Fall back to AI layout only for plain text uploads
     const htmlLayout = html ? detectLayoutFromHtml(html, resumeData) : null;
+    const pdfLayout = textItems ? detectLayoutFromPdf(textItems, resumeData) : null;
     const aiLayout = styleData.layout || {};
-    const sourceLayout = htmlLayout || aiLayout;
+    const sourceLayout = htmlLayout || pdfLayout || aiLayout;
     const layout = {
       header: { ...DEFAULT_LAYOUT.header, ...sourceLayout.header },
       education: { ...DEFAULT_LAYOUT.education, ...sourceLayout.education, rows: Array.isArray(sourceLayout.education?.rows) && sourceLayout.education.rows.length > 0 ? sourceLayout.education.rows : DEFAULT_LAYOUT.education.rows },
@@ -925,7 +1266,7 @@ generateRouter.post('/', upload.single('file'), async (req, res) => {
       skills: { ...DEFAULT_LAYOUT.skills, ...sourceLayout.skills },
       projects: { ...DEFAULT_LAYOUT.projects, ...sourceLayout.projects, rows: Array.isArray(sourceLayout.projects?.rows) && sourceLayout.projects.rows.length > 0 ? sourceLayout.projects.rows : DEFAULT_LAYOUT.projects.rows },
     };
-    console.log('  Layout source:', htmlLayout ? 'HTML detection' : 'AI response');
+    console.log('  Layout source:', htmlLayout ? 'HTML detection' : pdfLayout ? 'PDF detection' : 'AI response');
     console.log('  Layout detected:', JSON.stringify({ eduBold: layout.education.boldField, eduItalic: layout.education.italicField, expBold: layout.experience.boldField, expItalic: layout.experience.italicField, eduRows: layout.education.rows.length, expRows: layout.experience.rows.length }));
 
     // Remove sectionOrder from resumeData to avoid duplication (it's stored at template level)

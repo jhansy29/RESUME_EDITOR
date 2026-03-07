@@ -1,0 +1,299 @@
+/* === Vault View === */
+.vault-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.vault-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #888;
+  font-size: 14px;
+}
+
+.vault-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.vault-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.vault-stats {
+  display: flex;
+  gap: 16px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.vault-stats span {
+  background: #e2e8f0;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.vault-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* === Vault Sidebar === */
+.vault-sidebar {
+  width: 160px;
+  min-width: 160px;
+  border-right: 1px solid #e2e8f0;
+  background: #f8fafc;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.vault-sidebar-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #475569;
+  transition: background 0.15s;
+}
+
+.vault-sidebar-btn:hover {
+  background: #e2e8f0;
+}
+
+.vault-sidebar-btn.active {
+  background: #3b82f6;
+  color: white;
+  font-weight: 500;
+}
+
+/* === Vault Content === */
+.vault-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+.vault-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #94a3b8;
+  text-align: center;
+  font-size: 14px;
+}
+
+/* === Vault Entry Cards === */
+.vault-entry-card {
+  margin-bottom: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  background: white;
+}
+
+/* === Bullet Groups === */
+.vault-bullet-groups {
+  margin-top: 12px;
+}
+
+.vault-bullet-group {
+  margin: 8px 0;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.vault-group-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.vault-theme-input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  background: white;
+}
+
+/* === Vault Bullets === */
+.vault-bullet {
+  position: relative;
+  margin: 6px 0;
+  padding: 8px;
+  padding-right: 30px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  background: white;
+}
+
+.vault-bullet-text {
+  width: 100%;
+  border: none;
+  resize: vertical;
+  font-size: 12px;
+  line-height: 1.5;
+  font-family: inherit;
+  outline: none;
+}
+
+.vault-bullet-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.vault-tags-input,
+.vault-metrics-input {
+  flex: 1;
+  padding: 3px 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 3px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+.vault-tags-input::placeholder,
+.vault-metrics-input::placeholder {
+  color: #94a3b8;
+}
+
+.vault-bullet .bullet-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+/* === Summary Editor === */
+.vault-summary-label {
+  font-weight: 600;
+  max-width: 200px;
+}
+
+.vault-summary-text {
+  width: 100%;
+  resize: vertical;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
+/* === Extracurriculars === */
+.vault-extra-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.vault-extra-item .field-input {
+  flex: 1;
+}
+
+/* === Import Modal === */
+.vault-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.vault-modal {
+  background: white;
+  border-radius: 12px;
+  width: 700px;
+  max-width: 90vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.vault-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.vault-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.vault-modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #64748b;
+  padding: 4px 8px;
+}
+
+.vault-modal-desc {
+  padding: 12px 20px 0;
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.vault-import-textarea {
+  margin: 12px 20px;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  resize: vertical;
+  flex: 1;
+  min-height: 200px;
+}
+
+.vault-import-error {
+  margin: 0 20px;
+  padding: 8px 12px;
+  background: #fef2f2;
+  color: #dc2626;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.vault-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid #e2e8f0;
+}

@@ -33,7 +33,7 @@
   margin: 1pt 0 0 0;
   line-height: 1.2;
 }
-.resume-contact span + span::before {
+.resume-contact > span + span::before {
   content: var(--contact-sep, ' | ');
   margin: 0 1pt;
 }
@@ -236,7 +236,7 @@
   align-items: center;
   gap: 1pt;
 }
-.resume-contact.contact-stacked span + span::before {
+.resume-contact.contact-stacked > span + span::before {
   content: none;
 }
 
@@ -246,12 +246,12 @@
   gap: 0 8pt;
   justify-items: center;
 }
-.resume-contact.contact-two-col span + span::before {
+.resume-contact.contact-two-col > span + span::before {
   content: none;
 }
 
 /* Dynamic contact separator via CSS variable */
-.resume-contact span + span::before {
+.resume-contact > span + span::before {
   content: var(--contact-sep, ' | ');
 }
 
@@ -376,8 +376,7 @@
 .editable-text-wrap {
   position: relative;
   display: inline-block;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  vertical-align: baseline;
 }
 .editable-text {
   cursor: text;

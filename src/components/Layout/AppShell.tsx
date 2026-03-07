@@ -6,11 +6,16 @@ import { SectionSidebar } from './SectionSidebar';
 import { FormEditor } from '../FormEditor/FormEditor';
 import { ResumePreview } from '../ResumePreview/ResumePreview';
 import { ResumeList } from './ResumeList';
+import { VaultView } from '../Vault/VaultView';
+import { JDAnalyzerPanel } from '../JDAnalyzer/JDAnalyzerPanel';
+import { SuggestionsPanel } from '../Suggestions/SuggestionsPanel';
 import { listResumes, getResume, createResume, duplicateResume, deleteResume, type ResumeMeta } from '../../api/resumeApi';
 import { getTemplate } from '../../api/templateApi';
 import { sampleResume } from '../../data/sampleResume';
 import type { ResumeData } from '../../types/resume';
 import '../../styles/app.css';
+
+export type AppView = 'editor' | 'vault' | 'jd-analyzer';
 
 export function AppShell() {
   const activeSection = useResumeStore((s) => s.activeSection);
@@ -22,6 +27,7 @@ export function AppShell() {
 
   const [resumes, setResumes] = useState<ResumeMeta[]>([]);
   const [showList, setShowList] = useState(true);
+  const [view, setView] = useState<AppView>('editor');
 
   // Load resume list from MongoDB on mount
   useEffect(() => {
@@ -137,9 +143,39 @@ export function AppShell() {
     );
   }
 
+  if (view === 'vault') {
+    return (
+      <div className="app-shell">
+        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={setView} />
+        <div className="main-content" style={{ flexDirection: 'column' }}>
+          <VaultView />
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'jd-analyzer') {
+    return (
+      <div className="app-shell">
+        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={setView} />
+        <div className="main-content">
+          <div className="form-panel" style={{ minWidth: 360, maxWidth: 400 }}>
+            <JDAnalyzerPanel />
+          </div>
+          <div className="preview-panel">
+            <ResumePreview />
+          </div>
+          <div className="form-panel" style={{ minWidth: 340, maxWidth: 380, borderLeft: '1px solid #e2e8f0' }}>
+            <SuggestionsPanel />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
-      <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} />
+      <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={setView} />
       <FormatToolbar />
       <div className="main-content">
         <SectionSidebar />

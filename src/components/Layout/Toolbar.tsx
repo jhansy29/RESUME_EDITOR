@@ -2,13 +2,16 @@ import { useRef } from 'react';
 import { useResumeStore } from '../../hooks/useResumeStore';
 import { exportJson, importJson } from '../../utils/storage';
 import { exportDocx } from '../../utils/docxExport';
+import type { AppView } from './AppShell';
 
 interface Props {
   onShowList: () => void;
   onSaveAsVersion: () => void;
+  view?: AppView;
+  onViewChange?: (view: AppView) => void;
 }
 
-export function Toolbar({ onShowList, onSaveAsVersion }: Props) {
+export function Toolbar({ onShowList, onSaveAsVersion, view = 'editor', onViewChange }: Props) {
   const data = useResumeStore((s) => s.data);
   const loadData = useResumeStore((s) => s.loadData);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -32,6 +35,29 @@ export function Toolbar({ onShowList, onSaveAsVersion }: Props) {
       <div className="toolbar-group">
         <button onClick={onShowList}>All Resumes</button>
         <button onClick={onSaveAsVersion}>Save as Version</button>
+      </div>
+
+      <div className="toolbar-divider" />
+
+      <div className="toolbar-group">
+        <button
+          className={view === 'editor' ? 'active' : ''}
+          onClick={() => onViewChange?.('editor')}
+        >
+          Editor
+        </button>
+        <button
+          className={view === 'vault' ? 'active' : ''}
+          onClick={() => onViewChange?.('vault')}
+        >
+          Vault
+        </button>
+        <button
+          className={view === 'jd-analyzer' ? 'active' : ''}
+          onClick={() => onViewChange?.('jd-analyzer')}
+        >
+          JD Analyzer
+        </button>
       </div>
 
       <div className="toolbar-divider" />

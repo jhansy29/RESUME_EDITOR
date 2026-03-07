@@ -1,9 +1,13 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import { resumeRouter } from './routes/resume.js';
 import { templateRouter } from './routes/template.js';
 import { generateRouter } from './routes/generate.js';
+import { vaultRouter } from './routes/vault.js';
+import { jdRouter } from './routes/jd.js';
+import { suggestionsRouter } from './routes/suggestions.js';
 
 const app = express();
 const PORT = 3001;
@@ -18,5 +22,8 @@ mongoose.connect('mongodb://127.0.0.1:27017/resume-editor')
 app.use('/api/resumes', resumeRouter);
 app.use('/api/templates', templateRouter);
 app.use('/api/generate-template', generateRouter);
+app.use('/api/vault', vaultRouter);
+app.use('/api/jd', jdRouter);
+app.use('/api/suggestions', suggestionsRouter);
 
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
