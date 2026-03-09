@@ -28,16 +28,13 @@ export function Toolbar({ onShowList, onSaveAsVersion, view = 'editor', onViewCh
     e.target.value = '';
   };
 
+  const isEditor = view === 'editor';
+
   return (
     <div className="toolbar">
-      <span className="toolbar-title">Resume Editor</span>
-
-      <div className="toolbar-group">
-        <button onClick={onShowList}>All Resumes</button>
-        <button onClick={onSaveAsVersion}>Save as Version</button>
-      </div>
-
-      <div className="toolbar-divider" />
+      <span className="toolbar-title" style={{ cursor: 'pointer' }} onClick={() => onViewChange?.('home')}>
+        Resume Studio
+      </span>
 
       <div className="toolbar-group">
         <button
@@ -58,28 +55,44 @@ export function Toolbar({ onShowList, onSaveAsVersion, view = 'editor', onViewCh
         >
           JD Analyzer
         </button>
+        <button
+          className={view === 'tracker' ? 'active' : ''}
+          onClick={() => onViewChange?.('tracker')}
+        >
+          Tracker
+        </button>
       </div>
 
-      <div className="toolbar-divider" />
+      {isEditor && (
+        <>
+          <div className="toolbar-divider" />
+          <div className="toolbar-group">
+            <button onClick={onShowList}>All Resumes</button>
+            <button onClick={onSaveAsVersion}>Save as Version</button>
+          </div>
 
-      <div className="toolbar-group">
-        <button className="primary" onClick={() => window.print()}>PDF</button>
-        <button className="primary" onClick={() => exportDocx(data)}>DOCX</button>
-      </div>
+          <div className="toolbar-divider" />
 
-      <div className="toolbar-divider" />
+          <div className="toolbar-group">
+            <button className="primary" onClick={() => window.print()}>PDF</button>
+            <button className="primary" onClick={() => exportDocx(data)}>DOCX</button>
+          </div>
 
-      <div className="toolbar-group">
-        <button onClick={() => exportJson(data)}>Export JSON</button>
-        <button onClick={() => fileRef.current?.click()}>Import JSON</button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".json"
-          className="hidden-input"
-          onChange={handleImport}
-        />
-      </div>
+          <div className="toolbar-divider" />
+
+          <div className="toolbar-group">
+            <button onClick={() => exportJson(data)}>Export JSON</button>
+            <button onClick={() => fileRef.current?.click()}>Import JSON</button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".json"
+              className="hidden-input"
+              onChange={handleImport}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }

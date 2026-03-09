@@ -92,7 +92,10 @@ export function ResumePreview() {
     let currentPageUsed = 0;
 
     for (let i = 0; i < children.length; i++) {
-      const childHeight = children[i].offsetHeight;
+      const style = window.getComputedStyle(children[i]);
+      const marginTop = parseFloat(style.marginTop) || 0;
+      const marginBottom = parseFloat(style.marginBottom) || 0;
+      const childHeight = children[i].offsetHeight + marginTop + marginBottom;
 
       if (currentPageUsed === 0) {
         // First item on a new page always goes on it
@@ -117,17 +120,29 @@ export function ResumePreview() {
 
   // Compute scale to fit container
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    let currentScale = 0.75;
     function updateScale() {
-      if (containerRef.current) {
-        const containerWidth = containerRef.current.clientWidth - 48;
+      if (el) {
+        const containerWidth = el.clientWidth - 48;
         if (containerWidth > 0) {
-          setScale(Math.min(1, containerWidth / PAGE_WIDTH_PX));
+          const newScale = Math.min(1, containerWidth / PAGE_WIDTH_PX);
+          // Only update if scale changed meaningfully (prevents oscillation)
+          if (Math.abs(newScale - currentScale) > 0.005) {
+            currentScale = newScale;
+            setScale(newScale);
+          }
         }
       }
     }
+
+    const ro = new ResizeObserver(() => requestAnimationFrame(updateScale));
+    ro.observe(el);
     requestAnimationFrame(updateScale);
-    window.addEventListener('resize', updateScale);
-    return () => window.removeEventListener('resize', updateScale);
+
+    return () => ro.disconnect();
   }, []);
 
   const pageStyle: React.CSSProperties = {
@@ -151,7 +166,7 @@ export function ResumePreview() {
   const sectionKeys: string[] = [];
   const sectionBlocks: React.ReactNode[] = [];
 
-  const sectionRenderers: Record<string, () => React.ReactNode | null> = {
+  const sectionRenderers: Record<string, () => React.ReactNode | React.ReactNode[] | null> = {
     header: () => (
       <div key="header">
         <HeaderSection contact={data.contact} nameStyle={nameStyle} contactStyle={contactStyle} layout={lo.header} />
@@ -175,26 +190,68 @@ export function ResumePreview() {
         <SkillsSection rows={data.skills} layout={lo.skills} />
       </div>
     ) : null,
-    experience: () => data.experience.length > 0 ? (
-      <div key="experience" style={gapFor('experience')}>
-        <SectionHeading title="Experience" style={headingStyle} />
-        <ExperienceSection entries={data.experience} bulletStyle={{}} layout={lo.experience} />
-      </div>
-    ) : null,
-    projects: () => data.projects.length > 0 ? (
-      <div key="projects" style={gapFor('projects')}>
-        <SectionHeading title="Projects" style={headingStyle} />
-        <ProjectsSection entries={data.projects} bulletStyle={{}} layout={lo.projects} />
-      </div>
-    ) : null,
+    experience: () => {
+      if (data.experience.length === 0) return null;
+      const blocks: React.ReactNode[] = [];
+      // First block: heading + first entry (keeps heading with at least one entry)
+      blocks.push(
+        <div key="experience-0" style={gapFor('experience')}>
+          <SectionHeading title="Experience" style={headingStyle} />
+          <ExperienceSection entries={data.experience.slice(0, 1)} bulletStyle={{}} layout={lo.experience} />
+        </div>
+      );
+      // Each subsequent entry as its own block so page breaks can occur between entries
+      for (let i = 1; i < data.experience.length; i++) {
+        const entry = data.experience[i];
+        const gap = data.entryGaps?.[entry.id] ?? fmt.bulletSpacing ?? 0;
+        blocks.push(
+          <div key={`experience-${i}`} style={{ marginTop: `${gap}pt` }}>
+            <ExperienceSection entries={[entry]} bulletStyle={{}} layout={lo.experience} />
+          </div>
+        );
+      }
+      return blocks;
+    },
+    projects: () => {
+      if (data.projects.length === 0) return null;
+      const blocks: React.ReactNode[] = [];
+      blocks.push(
+        <div key="projects-0" style={gapFor('projects')}>
+          <SectionHeading title="Projects" style={headingStyle} />
+          <ProjectsSection entries={data.projects.slice(0, 1)} bulletStyle={{}} layout={lo.projects} />
+        </div>
+      );
+      for (let i = 1; i < data.projects.length; i++) {
+        const entry = data.projects[i];
+        const gap = data.entryGaps?.[entry.id] ?? fmt.bulletSpacing ?? 0;
+        blocks.push(
+          <div key={`projects-${i}`} style={{ marginTop: `${gap}pt` }}>
+            <ProjectsSection entries={[entry]} bulletStyle={{}} layout={lo.projects} />
+          </div>
+        );
+      }
+      return blocks;
+    },
   };
+
+  // blockMeta tracks which section each block belongs to and whether it's the first block in that section
+  const blockMeta: { sectionKey: string; isFirst: boolean }[] = [];
 
   for (const key of order) {
     if (sectionRenderers[key]) {
-      const block = sectionRenderers[key]();
-      if (block) {
+      const result = sectionRenderers[key]();
+      if (!result) continue;
+
+      if (Array.isArray(result)) {
         sectionKeys.push(key);
-        sectionBlocks.push(block);
+        result.forEach((block, i) => {
+          sectionBlocks.push(block);
+          blockMeta.push({ sectionKey: key, isFirst: i === 0 });
+        });
+      } else {
+        sectionKeys.push(key);
+        sectionBlocks.push(result);
+        blockMeta.push({ sectionKey: key, isFirst: true });
       }
     } else if (key.startsWith('custom-')) {
       const cs = data.customSections?.find(c => `custom-${c.id}` === key);
@@ -206,6 +263,7 @@ export function ResumePreview() {
             <CustomSectionPreview section={cs} bulletStyle={{}} />
           </div>
         );
+        blockMeta.push({ sectionKey: key, isFirst: true });
       }
     }
   }
@@ -221,6 +279,7 @@ export function ResumePreview() {
           <CustomSectionPreview section={cs} bulletStyle={{}} />
         </div>
       );
+      blockMeta.push({ sectionKey: key, isFirst: true });
     }
   });
 
@@ -303,20 +362,25 @@ export function ResumePreview() {
                     <div className="resume-page" style={pageStyle}>
                       {pageSections.map((block, i) => {
                         const globalIdx = pages.slice(0, pageIdx).reduce((sum, p) => sum + p.length, 0) + i;
-                        const key = sectionKeys[globalIdx];
-                        const showGap = key !== 'header' && (i > 0 || pageIdx > 0);
+                        const meta = blockMeta[globalIdx];
+                        const showGap = meta.isFirst && meta.sectionKey !== 'header' && (i > 0 || pageIdx > 0);
+                        const blockKey = meta.isFirst ? meta.sectionKey : `${meta.sectionKey}-sub-${globalIdx}`;
                         return (
-                          <React.Fragment key={key}>
+                          <React.Fragment key={blockKey}>
                             {showGap && (
                               <GapHandle
-                                gap={data.sectionGaps?.[key] ?? fmt.sectionSpacing}
+                                gap={data.sectionGaps?.[meta.sectionKey] ?? fmt.sectionSpacing}
                                 defaultGap={fmt.sectionSpacing}
-                                onChange={(newGap) => updateSectionGap(key, newGap)}
+                                onChange={(newGap) => updateSectionGap(meta.sectionKey, newGap)}
                               />
                             )}
-                            <SortableSectionBlock id={key}>
-                              {block}
-                            </SortableSectionBlock>
+                            {meta.isFirst ? (
+                              <SortableSectionBlock id={meta.sectionKey}>
+                                {block}
+                              </SortableSectionBlock>
+                            ) : (
+                              <div>{block}</div>
+                            )}
                           </React.Fragment>
                         );
                       })}

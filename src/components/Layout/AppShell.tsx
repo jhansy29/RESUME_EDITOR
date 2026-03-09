@@ -9,13 +9,15 @@ import { ResumeList } from './ResumeList';
 import { VaultView } from '../Vault/VaultView';
 import { JDAnalyzerPanel } from '../JDAnalyzer/JDAnalyzerPanel';
 import { SuggestionsPanel } from '../Suggestions/SuggestionsPanel';
+import { HomePage } from './HomePage';
+import { ApplicationTracker } from '../Tracker/ApplicationTracker';
 import { listResumes, getResume, createResume, duplicateResume, deleteResume, type ResumeMeta } from '../../api/resumeApi';
 import { getTemplate } from '../../api/templateApi';
 import { sampleResume } from '../../data/sampleResume';
 import type { ResumeData } from '../../types/resume';
 import '../../styles/app.css';
 
-export type AppView = 'editor' | 'vault' | 'jd-analyzer';
+export type AppView = 'home' | 'editor' | 'vault' | 'jd-analyzer' | 'tracker';
 
 export function AppShell() {
   const activeSection = useResumeStore((s) => s.activeSection);
@@ -26,34 +28,30 @@ export function AppShell() {
   const mongoId = useResumeStore((s) => s.mongoId);
 
   const [resumes, setResumes] = useState<ResumeMeta[]>([]);
-  const [showList, setShowList] = useState(true);
-  const [view, setView] = useState<AppView>('editor');
+  const [showList, setShowList] = useState(false);
+  const [view, setView] = useState<AppView>('home');
 
-  // Load resume list from MongoDB on mount
+  // Pre-load resume list on mount (don't auto-navigate away from home)
   useEffect(() => {
     listResumes()
-      .then(async (list) => {
+      .then((list) => {
         setResumes(list);
-        if (list.length > 0) {
-          // Auto-load most recent
-          const doc = await getResume(list[0]._id);
-          const { _id, __v, createdAt, updatedAt, ...data } = doc;
-          loadData(data as ResumeData);
-          setMongoId(_id);
-          setShowList(false);
-        }
         setLoading(false);
       })
       .catch(() => {
-        // Fallback to localStorage
-        try {
-          const raw = localStorage.getItem('resume-editor-data');
-          if (raw) loadData(JSON.parse(raw));
-        } catch { /* ignore */ }
         setLoading(false);
-        setShowList(false);
       });
   }, []);
+
+  const handleNavigate = async (target: AppView) => {
+    if (target === 'editor') {
+      // Always show resume list first so user picks which resume to edit
+      const list = await listResumes();
+      setResumes(list);
+      setShowList(true);
+    }
+    setView(target);
+  };
 
   const handleSelectResume = async (id: string) => {
     const doc = await getResume(id);
@@ -78,7 +76,6 @@ export function AppShell() {
     loadData(data as ResumeData);
     setMongoId(_id);
     setResumes(await listResumes());
-    // Stay on the list view so user can see the new copy
   };
 
   const handleDeleteResume = async (id: string) => {
@@ -99,7 +96,6 @@ export function AppShell() {
 
   const handleApplyTemplate = async (templateId: string, resumeName: string) => {
     const template = await getTemplate(templateId);
-    // Use template's stored resume content + format as the starting point
     const resumeData: Record<string, unknown> = {
       ...(template.resumeData || {}),
       name: resumeName,
@@ -125,12 +121,20 @@ export function AppShell() {
     return <div className="app-shell"><div className="loading">Loading...</div></div>;
   }
 
-  if (showList) {
+  // Home page — the landing screen
+  if (view === 'home') {
     return (
       <div className="app-shell">
-        <div className="toolbar">
-          <span className="toolbar-title">Resume Editor</span>
-        </div>
+        <HomePage onNavigate={handleNavigate} />
+      </div>
+    );
+  }
+
+  // Resume list picker (within editor view)
+  if (view === 'editor' && showList) {
+    return (
+      <div className="app-shell">
+        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={handleNavigate} />
         <ResumeList
           resumes={resumes}
           onSelect={handleSelectResume}
@@ -146,9 +150,20 @@ export function AppShell() {
   if (view === 'vault') {
     return (
       <div className="app-shell">
-        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={setView} />
+        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={handleNavigate} />
         <div className="main-content" style={{ flexDirection: 'column' }}>
           <VaultView />
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'tracker') {
+    return (
+      <div className="app-shell">
+        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={handleNavigate} />
+        <div className="main-content" style={{ flexDirection: 'column', overflow: 'auto' }}>
+          <ApplicationTracker />
         </div>
       </div>
     );
@@ -157,15 +172,15 @@ export function AppShell() {
   if (view === 'jd-analyzer') {
     return (
       <div className="app-shell">
-        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={setView} />
-        <div className="main-content">
-          <div className="form-panel" style={{ minWidth: 360, maxWidth: 400 }}>
+        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={handleNavigate} />
+        <div className="main-content jd-analyzer-layout">
+          <div className="jd-analyzer-left">
             <JDAnalyzerPanel />
           </div>
-          <div className="preview-panel">
+          <div className="jd-analyzer-center">
             <ResumePreview />
           </div>
-          <div className="form-panel" style={{ minWidth: 340, maxWidth: 380, borderLeft: '1px solid #e2e8f0' }}>
+          <div className="jd-analyzer-right">
             <SuggestionsPanel />
           </div>
         </div>
@@ -173,9 +188,10 @@ export function AppShell() {
     );
   }
 
+  // Editor view (default)
   return (
     <div className="app-shell">
-      <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={setView} />
+      <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={handleNavigate} />
       <FormatToolbar />
       <div className="main-content">
         <SectionSidebar />

@@ -1,4 +1,6 @@
-const BASE = 'http://localhost:3001/api/resumes';
+import { API_BASE } from './config';
+
+const BASE = `${API_BASE}/resumes`;
 
 export interface ResumeMeta {
   _id: string;

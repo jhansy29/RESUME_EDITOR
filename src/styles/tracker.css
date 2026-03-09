@@ -1,0 +1,487 @@
+/* ============================================
+   APPLICATION TRACKER
+   ============================================ */
+
+.tracker-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 24px;
+  width: 100%;
+}
+
+.tracker-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* --- Header --- */
+.tracker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.tracker-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #1f2937;
+  letter-spacing: -0.02em;
+}
+
+.tracker-subtitle {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.tracker-add-btn {
+  padding: 10px 24px;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tracker-add-btn:hover {
+  background: #5558e6;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* --- Stats --- */
+.tracker-stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.tracker-stat-card {
+  flex: 1;
+  min-width: 120px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.tracker-stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.tracker-stat-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* --- Controls --- */
+.tracker-controls {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tracker-search {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #fff;
+  color: #1f2937;
+  transition: border-color 0.15s;
+}
+
+.tracker-search:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
+}
+
+.tracker-search::placeholder {
+  color: #9ca3af;
+}
+
+.tracker-filter {
+  padding: 10px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #fff;
+  color: #1f2937;
+  cursor: pointer;
+  min-width: 160px;
+}
+
+.tracker-filter:focus {
+  outline: none;
+  border-color: #6366f1;
+}
+
+/* --- Table --- */
+.tracker-table-wrap {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.tracker-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tracker-th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.tracker-th.sortable {
+  cursor: pointer;
+}
+
+.tracker-th.sortable:hover {
+  color: #4f46e5;
+  background: #eef2ff;
+}
+
+.tracker-td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #374151;
+  vertical-align: middle;
+}
+
+.tracker-row:hover {
+  background: #fafbfe;
+}
+
+.tracker-row:last-child .tracker-td {
+  border-bottom: none;
+}
+
+.tracker-empty {
+  text-align: center;
+  padding: 48px 16px !important;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.tracker-company {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tracker-company-name {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.tracker-link {
+  color: #6366f1;
+  text-decoration: none;
+  font-size: 12px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+
+.tracker-link:hover {
+  opacity: 1;
+}
+
+.tracker-date {
+  white-space: nowrap;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* --- Status Badge (inline select) --- */
+.tracker-status-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: none;
+}
+
+.tracker-priority {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* --- Actions --- */
+.tracker-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.tracker-row:hover .tracker-actions {
+  opacity: 1;
+}
+
+.tracker-action-btn {
+  padding: 4px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: #6b7280;
+}
+
+.tracker-action-btn.edit:hover {
+  border-color: #a5b4fc;
+  color: #4f46e5;
+  background: #eef2ff;
+}
+
+.tracker-action-btn.delete:hover {
+  border-color: #fca5a5;
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+/* --- Form --- */
+.tracker-form {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.tracker-form-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 20px;
+}
+
+.tracker-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.tracker-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tracker-field.full-width {
+  grid-column: 1 / -1;
+}
+
+.tracker-field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tracker-field input,
+.tracker-field select,
+.tracker-field textarea {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1f2937;
+  background: #fff;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+
+.tracker-field input:focus,
+.tracker-field select:focus,
+.tracker-field textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
+}
+
+.tracker-field input::placeholder,
+.tracker-field textarea::placeholder {
+  color: #9ca3af;
+}
+
+.tracker-field textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.tracker-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.tracker-cancel-btn {
+  padding: 8px 20px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tracker-cancel-btn:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.tracker-save-btn {
+  padding: 8px 24px;
+  border: none;
+  border-radius: 6px;
+  background: #6366f1;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tracker-save-btn:hover {
+  background: #5558e6;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.tracker-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- Form Header --- */
+.tracker-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.tracker-form-header .tracker-form-title {
+  margin-bottom: 0;
+}
+
+.tracker-scraping {
+  font-size: 12px;
+  color: #6366f1;
+  font-weight: 500;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.tracker-scrape-error {
+  font-size: 12px;
+  color: #ef4444;
+  font-weight: 500;
+}
+
+/* --- Quick Add Row --- */
+.tracker-quick-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tracker-quick-input {
+  flex: 1;
+  min-width: 140px;
+  padding: 9px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1f2937;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+
+.tracker-quick-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
+}
+
+.tracker-quick-input::placeholder {
+  color: #9ca3af;
+}
+
+.tracker-url-input {
+  flex: 2;
+}
+
+.tracker-quick-select {
+  padding: 9px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1f2937;
+  background: #fff;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.tracker-expand-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #6366f1;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.tracker-expand-link:hover {
+  color: #4f46e5;
+  text-decoration: underline;
+}

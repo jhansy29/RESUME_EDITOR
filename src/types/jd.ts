@@ -2,6 +2,7 @@ export interface JDKeyword {
   keyword: string;
   category: 'language' | 'framework' | 'tool' | 'platform' | 'methodology' | 'skill' | 'soft_skill' | 'domain';
   frequency: number;
+  context?: 'required' | 'described_in_responsibilities' | 'repeated_emphasis' | 'preferred' | 'example_in_parenthetical' | 'mentioned_once';
 }
 
 export interface JDAnalysis {

@@ -1,6 +1,8 @@
 import type { ProfileVault } from '../types/vault';
 
-const BASE = 'http://localhost:3001/api/vault';
+import { API_BASE } from './config';
+
+const BASE = `${API_BASE}/vault`;
 
 export async function getVault(): Promise<ProfileVault | null> {
   const res = await fetch(BASE);

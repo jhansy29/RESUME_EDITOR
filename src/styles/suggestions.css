@@ -2,10 +2,10 @@
 .sug-panel {
   height: 100%;
   overflow-y: auto;
-  padding: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .sug-empty {

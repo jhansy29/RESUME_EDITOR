@@ -1,10 +1,63 @@
 import { Router } from 'express';
 import { callAI } from '../utils/ai.js';
 import { Resume } from '../models/Resume.js';
+import { SavedJD } from '../models/SavedJD.js';
 
 export const jdRouter = Router();
 
-const JD_ANALYSIS_PROMPT = `You are a job description analyzer for ATS resume optimization. Given a job description, extract structured keyword and requirement data.
+// --- Saved JDs CRUD ---
+jdRouter.get('/saved', async (_req, res) => {
+  try {
+    const jds = await SavedJD.find().sort({ updatedAt: -1 }).select('title company updatedAt');
+    res.json(jds);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+jdRouter.get('/saved/:id', async (req, res) => {
+  try {
+    const jd = await SavedJD.findById(req.params.id);
+    if (!jd) return res.status(404).json({ error: 'Saved JD not found' });
+    res.json(jd);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+jdRouter.post('/saved', async (req, res) => {
+  try {
+    const { title, company, jobDescription, analysis } = req.body;
+    if (!title || !jobDescription) {
+      return res.status(400).json({ error: 'title and jobDescription are required' });
+    }
+    const jd = await SavedJD.create({ title, company, jobDescription, analysis });
+    res.status(201).json(jd);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+jdRouter.patch('/saved/:id', async (req, res) => {
+  try {
+    const jd = await SavedJD.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!jd) return res.status(404).json({ error: 'Saved JD not found' });
+    res.json(jd);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+jdRouter.delete('/saved/:id', async (req, res) => {
+  try {
+    await SavedJD.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const JD_ANALYSIS_PROMPT = `You are a strict, precise job description analyzer for ATS resume optimization. Given a job description, extract structured keyword and requirement data.
 
 Return ONLY valid JSON — no markdown, no backticks, no explanation.
 
@@ -18,14 +71,16 @@ The JSON must match this exact schema:
       {
         "keyword": "string (exact term from JD)",
         "category": "string (one of: language, framework, tool, platform, methodology, skill, soft_skill, domain)",
-        "frequency": 0
+        "frequency": 0,
+        "context": "string (one of: required, described_in_responsibilities, repeated_emphasis)"
       }
     ],
     "niceToHave": [
       {
         "keyword": "string",
         "category": "string",
-        "frequency": 0
+        "frequency": 0,
+        "context": "string (one of: preferred, example_in_parenthetical, mentioned_once)"
       }
     ]
   },
@@ -39,8 +94,16 @@ The JSON must match this exact schema:
 }
 
 Rules:
-- mustHave keywords: mentioned 2+ times in the JD, or appear in "Requirements"/"Must Have"/"Required" sections
-- niceToHave keywords: mentioned once, or appear in "Preferred"/"Nice to Have"/"Bonus" sections
+- mustHave keywords: skills/tools that are CORE to the role — mentioned 2+ times, appear in "Requirements"/"Must Have"/"Required" sections, or described in main responsibilities
+- niceToHave keywords: mentioned once, appear in "Preferred"/"Nice to Have"/"Bonus" sections, OR appear as EXAMPLES in parenthetical lists (e.g., "orchestration tooling (e.g., Ray, Airflow)" — Ray and Airflow are examples, not hard requirements; the REAL requirement is "orchestration tooling")
+
+CRITICAL — Parenthetical examples rule:
+When a JD says something like "vector/embedding tooling (e.g., FAISS)" or "RAG tooling (e.g., Chroma, Weaviate)" or "agent authoring tools (e.g., LlamaIndex, LangGraph, CrewAI)":
+  - The CATEGORY/CONCEPT (e.g., "vector/embedding tooling", "RAG tooling", "agent authoring tools") is the mustHave keyword
+  - The specific tools in parentheses (e.g., FAISS, Chroma, Weaviate, LlamaIndex, CrewAI) are niceToHave with context "example_in_parenthetical"
+  - A resume matches if it has ANY tool in that category, not necessarily the exact examples listed
+  - Do NOT mark parenthetical examples as mustHave — they are interchangeable alternatives
+
 - frequency: count how many times each keyword appears in the full JD text
 - category must be one of the specified values
 - Extract ALL technical tools, frameworks, languages, platforms, and methodologies mentioned
@@ -49,7 +112,7 @@ Rules:
 - Be thorough — missing a keyword means the resume won't match on that term
 - Return ONLY the JSON object, nothing else`;
 
-const ATS_SCORE_PROMPT = `You are an ATS scoring engine. Given a job description analysis and a resume, calculate how well the resume matches the JD.
+const ATS_SCORE_PROMPT = `You are a strict, honest ATS scoring engine. Your job is to give ACCURATE scores, not flattering ones. An inflated score hurts the user because they won't know what to fix. Given a job description analysis and a resume, calculate how well the resume matches the JD.
 
 Return ONLY valid JSON — no markdown, no backticks, no explanation.
 
@@ -68,17 +131,43 @@ The JSON must match this schema:
   "gaps": ["string (areas where resume is weak relative to JD)"]
 }
 
-Rules:
-- overall: 0-100 score representing total ATS match percentage
-- keywordMatch: percentage of JD must-have keywords found in the resume (exact or close synonym)
-- skillsMatch: percentage of JD technical skills present in resume's skills section
-- experienceMatch: how well resume experience aligns with JD requirements (0-100)
-- educationMatch: how well resume education meets JD requirements (0-100)
-- matchedKeywords: list every JD keyword (both must-have and nice-to-have) that appears in the resume
-- missingKeywords: list every JD keyword that does NOT appear in the resume
-- strongMatches: 2-4 brief statements about where the resume excels for this JD
-- gaps: 2-4 brief statements about what's missing or weak
-- Be precise: a keyword "matches" only if the exact term or a very close variant appears in the resume text
+SCORING METHODOLOGY — follow these formulas precisely:
+
+keywordMatch (0-100):
+  - Count how many mustHave keywords from the JD analysis appear in the resume (exact term or very close variant like "ML" for "machine learning")
+  - Formula: (matched mustHave count / total mustHave count) * 100
+  - For keywords with context "example_in_parenthetical": match if the resume has ANY tool in that category (e.g., if JD says "vector tooling (e.g., FAISS, Chroma)" and resume has FAISS, that counts as matching the category)
+  - DO NOT count a keyword as matched just because a vaguely related term appears — "AI" does not match "machine learning", "Python" does not match "scikit-learn"
+
+skillsMatch (0-100):
+  - Look ONLY at the resume's Skills/Technical Skills section
+  - Count how many JD technical keywords (tools, frameworks, languages, platforms) appear there
+  - Formula: (matched technical keywords in skills section / total JD technical keywords) * 100
+  - Must be exact matches or standard abbreviations — not loose associations
+
+experienceMatch (0-100):
+  - Score based on alignment with JD's experience REQUIREMENTS (years, type, domain)
+  - If JD requires "3+ years customer-facing AI/ML" and candidate has 6 months, score LOW (30-40), not high
+  - If JD describes specific responsibilities (e.g., "fine-tuning pipelines", "stakeholder enablement"), check if resume demonstrates EACH one
+  - Weight: years of relevant experience (40%), responsibility alignment (40%), domain relevance (20%)
+  - Be honest about gaps — a strong but junior candidate should score 50-65, not 85+
+
+educationMatch (0-100):
+  - Does the resume meet degree requirements? (100 if exceeds, 80-90 if meets, 50-70 if close, <50 if far off)
+
+overall (0-100):
+  - Weighted average: keywordMatch (30%) + skillsMatch (25%) + experienceMatch (35%) + educationMatch (10%)
+  - This weighting reflects that experience alignment matters most for getting past human review
+
+HONESTY RULES:
+- A typical untailored resume scores 40-65% against a specific JD. Scores above 80% should be rare and earned.
+- If the resume lists a skill but has NO experience bullets demonstrating it, note this in gaps
+- If the JD requires N+ years of specific experience and the candidate has less, this MUST appear in gaps and pull experienceMatch down
+- Do not give credit for skills the candidate listed but never used in any experience bullet
+- matchedKeywords: ONLY list keywords where the exact term or a standard variant genuinely appears in the resume text
+- missingKeywords: list every JD keyword that does NOT appear in the resume — be thorough
+- strongMatches: 2-4 specific, evidence-based statements about where the resume excels for this JD
+- gaps: 2-4 specific, honest statements about what's missing or weak — these should be ACTIONABLE
 - Return ONLY the JSON object, nothing else`;
 
 // Analyze a JD — extract keywords, requirements, and optionally score against a resume

@@ -10,13 +10,26 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import type { ResumeData } from '../types/resume';
+import { DEFAULT_FORMAT } from '../types/resume';
 import { parseBoldSegments } from './boldParser';
 
 const PAGE_WIDTH_TWIP = 12240; // US Letter width in twips
 const MARGIN = convertInchesToTwip(0.5);
 const CONTENT_WIDTH = PAGE_WIDTH_TWIP - MARGIN * 2;
 
-function sectionHeading(title: string): Paragraph {
+/** Extract the primary font name from a CSS font-family stack */
+function extractFontName(fontFamily: string): string {
+  const first = fontFamily.split(',')[0].trim();
+  // Strip surrounding quotes
+  return first.replace(/^['"]|['"]$/g, '');
+}
+
+/** Convert pt to half-points (docx size unit) */
+function pt(points: number): number {
+  return Math.round(points * 2);
+}
+
+function sectionHeading(title: string, font: string, size: number): Paragraph {
   return new Paragraph({
     spacing: { before: 120, after: 40 },
     border: {
@@ -27,26 +40,26 @@ function sectionHeading(title: string): Paragraph {
         text: title,
         bold: true,
         smallCaps: true,
-        size: 21, // ~10.5pt
-        font: 'Cambria',
+        size: pt(size),
+        font,
       }),
     ],
   });
 }
 
-function twoColumnRow(left: TextRun[], right: TextRun[]): Paragraph {
+function twoColumnRow(left: TextRun[], right: TextRun[], font: string, bodySize: number): Paragraph {
   return new Paragraph({
     tabStops: [{ type: TabStopType.RIGHT, position: CONTENT_WIDTH }],
     spacing: { after: 0 },
     children: [
       ...left,
-      new TextRun({ text: '\t', font: 'Cambria', size: 20 }),
+      new TextRun({ text: '\t', font, size: pt(bodySize) }),
       ...right,
     ],
   });
 }
 
-function bulletParagraph(text: string): Paragraph {
+function bulletParagraph(text: string, font: string, bodySize: number): Paragraph {
   const segments = parseBoldSegments(text);
   return new Paragraph({
     bullet: { level: 0 },
@@ -56,14 +69,21 @@ function bulletParagraph(text: string): Paragraph {
         new TextRun({
           text: seg.text,
           bold: seg.bold,
-          size: 20,
-          font: 'Cambria',
+          size: pt(bodySize),
+          font,
         })
     ),
   });
 }
 
 export async function exportDocx(data: ResumeData) {
+  const fmt = data.format ?? DEFAULT_FORMAT;
+  const font = extractFontName(fmt.fontFamily);
+  const bodySize = fmt.fontSize;
+  const nameSize = fmt.nameFontSize;
+  const contactSize = fmt.contactFontSize;
+  const headingSize = fmt.headingFontSize;
+
   const children: Paragraph[] = [];
 
   // Name
@@ -75,8 +95,8 @@ export async function exportDocx(data: ResumeData) {
         new TextRun({
           text: data.contact.name,
           bold: true,
-          size: 36, // 18pt
-          font: 'Cambria',
+          size: pt(nameSize),
+          font,
         }),
       ],
     })
@@ -99,8 +119,8 @@ export async function exportDocx(data: ResumeData) {
       children: [
         new TextRun({
           text: contactParts.join(' | '),
-          size: 18, // 9pt
-          font: 'Cambria',
+          size: pt(contactSize),
+          font,
         }),
       ],
     })
@@ -108,18 +128,20 @@ export async function exportDocx(data: ResumeData) {
 
   // Education
   if (data.education.length > 0) {
-    children.push(sectionHeading('Education'));
+    children.push(sectionHeading('Education', font, headingSize));
     for (const edu of data.education) {
       children.push(
         twoColumnRow(
-          [new TextRun({ text: edu.school, bold: true, size: 20, font: 'Cambria' })],
-          [new TextRun({ text: edu.location, size: 20, font: 'Cambria' })]
+          [new TextRun({ text: edu.school, bold: true, size: pt(bodySize), font })],
+          [new TextRun({ text: edu.location, size: pt(bodySize), font })],
+          font, bodySize
         )
       );
       children.push(
         twoColumnRow(
-          [new TextRun({ text: edu.degree, italics: true, size: 20, font: 'Cambria' })],
-          [new TextRun({ text: edu.dates, italics: true, size: 20, font: 'Cambria' })]
+          [new TextRun({ text: edu.degree, italics: true, size: pt(bodySize), font })],
+          [new TextRun({ text: edu.dates, italics: true, size: pt(bodySize), font })],
+          font, bodySize
         )
       );
       if (edu.coursework) {
@@ -127,8 +149,8 @@ export async function exportDocx(data: ResumeData) {
           new Paragraph({
             spacing: { after: 20 },
             children: [
-              new TextRun({ text: 'Courses: ', italics: true, size: 18, font: 'Cambria' }),
-              new TextRun({ text: edu.coursework, size: 18, font: 'Cambria' }),
+              new TextRun({ text: 'Courses: ', italics: true, size: pt(contactSize), font }),
+              new TextRun({ text: edu.coursework, size: pt(contactSize), font }),
             ],
           })
         );
@@ -138,15 +160,15 @@ export async function exportDocx(data: ResumeData) {
 
   // Skills
   if (data.skills.length > 0) {
-    children.push(sectionHeading('Skills Summary'));
+    children.push(sectionHeading('Skills Summary', font, headingSize));
     for (const row of data.skills) {
       children.push(
         new Paragraph({
           bullet: { level: 0 },
           spacing: { after: 10 },
           children: [
-            new TextRun({ text: `${row.category}: `, bold: true, size: 20, font: 'Cambria' }),
-            new TextRun({ text: row.skills, size: 20, font: 'Cambria' }),
+            new TextRun({ text: `${row.category}: `, bold: true, size: pt(bodySize), font }),
+            new TextRun({ text: row.skills, size: pt(bodySize), font }),
           ],
         })
       );
@@ -155,43 +177,46 @@ export async function exportDocx(data: ResumeData) {
 
   // Experience
   if (data.experience.length > 0) {
-    children.push(sectionHeading('Experience'));
+    children.push(sectionHeading('Experience', font, headingSize));
     for (const exp of data.experience) {
       children.push(
         twoColumnRow(
-          [new TextRun({ text: exp.company, bold: true, size: 20, font: 'Cambria' })],
-          [new TextRun({ text: exp.location, size: 20, font: 'Cambria' })]
+          [new TextRun({ text: exp.company, bold: true, size: pt(bodySize), font })],
+          [new TextRun({ text: exp.location, size: pt(bodySize), font })],
+          font, bodySize
         )
       );
       children.push(
         twoColumnRow(
-          [new TextRun({ text: exp.role, italics: true, size: 20, font: 'Cambria' })],
-          [new TextRun({ text: exp.dates, italics: true, size: 20, font: 'Cambria' })]
+          [new TextRun({ text: exp.role, italics: true, size: pt(bodySize), font })],
+          [new TextRun({ text: exp.dates, italics: true, size: pt(bodySize), font })],
+          font, bodySize
         )
       );
       for (const b of exp.bullets) {
-        children.push(bulletParagraph(b.text));
+        children.push(bulletParagraph(b.text, font, bodySize));
       }
     }
   }
 
   // Projects
   if (data.projects.length > 0) {
-    children.push(sectionHeading('Projects'));
+    children.push(sectionHeading('Projects', font, headingSize));
     for (const proj of data.projects) {
       const titleText = proj.techStack
         ? `${proj.title} (${proj.techStack})`
         : proj.title;
       children.push(
         twoColumnRow(
-          [new TextRun({ text: titleText, bold: true, size: 20, font: 'Cambria' })],
+          [new TextRun({ text: titleText, bold: true, size: pt(bodySize), font })],
           proj.date
-            ? [new TextRun({ text: proj.date, italics: true, size: 20, font: 'Cambria' })]
-            : []
+            ? [new TextRun({ text: proj.date, italics: true, size: pt(bodySize), font })]
+            : [],
+          font, bodySize
         )
       );
       for (const b of proj.bullets) {
-        children.push(bulletParagraph(b.text));
+        children.push(bulletParagraph(b.text, font, bodySize));
       }
     }
   }
@@ -200,9 +225,9 @@ export async function exportDocx(data: ResumeData) {
   if (data.customSections && data.customSections.length > 0) {
     for (const cs of data.customSections) {
       if (cs.items.length === 0) continue;
-      children.push(sectionHeading(cs.title));
+      children.push(sectionHeading(cs.title, font, headingSize));
       for (const item of cs.items) {
-        children.push(bulletParagraph(item.text));
+        children.push(bulletParagraph(item.text, font, bodySize));
       }
     }
   }

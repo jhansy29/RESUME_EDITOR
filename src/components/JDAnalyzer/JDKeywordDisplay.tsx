@@ -1,10 +1,15 @@
 import type { JDKeyword, ATSScore } from '../../types/jd';
 
 function KeywordChip({ kw, matched }: { kw: JDKeyword; matched: boolean }) {
+  const isExample = kw.context === 'example_in_parenthetical';
   return (
-    <span className={`jd-keyword-chip ${matched ? 'matched' : 'missing'}`}>
+    <span
+      className={`jd-keyword-chip ${matched ? 'matched' : 'missing'}${isExample ? ' example' : ''}`}
+      title={isExample ? 'Parenthetical example — any equivalent tool counts' : undefined}
+    >
       {matched ? '\u2713' : '\u2717'} {kw.keyword}
       {kw.frequency > 1 && <span className="jd-keyword-freq">{kw.frequency}x</span>}
+      {isExample && <span className="jd-keyword-example-tag">eg</span>}
     </span>
   );
 }

@@ -3,7 +3,9 @@ import type { JDAnalysis } from '../types/jd';
 import type { ProfileVault } from '../types/vault';
 import type { ResumeData } from '../types/resume';
 
-const BASE = 'http://localhost:3001/api/suggestions';
+import { API_BASE } from './config';
+
+const BASE = `${API_BASE}/suggestions`;
 
 export async function generateSuggestions(
   jdAnalysis: JDAnalysis,

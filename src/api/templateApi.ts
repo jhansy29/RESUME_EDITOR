@@ -1,4 +1,6 @@
-const BASE = 'http://localhost:3001/api/templates';
+import { API_BASE } from './config';
+
+const BASE = `${API_BASE}/templates`;
 
 export interface TemplateMeta {
   _id: string;
@@ -51,7 +53,7 @@ export async function generateTemplate(input: { file?: File; text?: string; name
   if (input.text) form.append('text', input.text);
   if (input.name) form.append('name', input.name);
 
-  const res = await fetch('http://localhost:3001/api/generate-template', {
+  const res = await fetch(`${API_BASE}/generate-template`, {
     method: 'POST',
     body: form,
   });

@@ -418,6 +418,47 @@ html, body, #root {
   overflow: hidden;
 }
 
+/* --- JD Analyzer Layout --- */
+.jd-analyzer-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.jd-analyzer-left {
+  flex: 0 0 320px;
+  min-width: 280px;
+  max-width: 360px;
+  overflow-y: auto;
+  background: #f8fafc;
+  border-right: 1px solid #e5e7eb;
+}
+
+.jd-analyzer-center {
+  flex: 1 1 0%;
+  overflow: hidden;
+  background: #e8eaef;
+  min-width: 400px;
+  position: relative;
+}
+
+.jd-analyzer-center .resume-preview-container {
+  position: absolute;
+  inset: 0;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  padding: 16px 8px;
+}
+
+.jd-analyzer-right {
+  flex: 0 0 300px;
+  min-width: 260px;
+  max-width: 360px;
+  overflow-y: auto;
+  background: #fff;
+  border-left: 1px solid #e5e7eb;
+}
+
 /* --- Section Sidebar --- */
 .section-sidebar {
   width: 148px;

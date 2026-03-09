@@ -9,7 +9,7 @@ interface Props {
 }
 
 const MIN_GAP = -50;
-const MAX_GAP = 200;
+const MAX_GAP = 1000;
 const STEP = 0.5;
 const PX_PER_PT = 96 / 72; // 1pt = 1.333px
 

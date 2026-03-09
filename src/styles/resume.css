@@ -312,29 +312,34 @@
 
 /* --- Print --- */
 @media print {
-  body * { visibility: hidden; }
-  .resume-page, .resume-page * { visibility: visible; }
-  .resume-measure, .resume-measure * { visibility: hidden !important; display: none !important; }
-  .resume-page {
-    position: relative;
-    left: 0; top: 0;
-    margin: 0;
-    box-shadow: none;
-    transform: none !important;
-    width: 8.5in;
-    height: 11in;
-    page-break-after: always;
+  /* Hide everything except resume pages */
+  .ribbon, .toolbar, .section-sidebar, .form-panel,
+  .resume-measure, .page-number {
+    display: none !important;
   }
-  .resume-page:last-child { page-break-after: auto; }
-  .resume-preview-wrapper {
-    transform: none !important;
+
+  /* Reset all parent containers — override inline styles with !important */
+  body, #root, .app-shell, .main-content, .preview-panel,
+  .resume-preview-container,
+  .resume-pages-stack, .resume-page-slot, .resume-preview-wrapper {
+    all: unset !important;
+    display: block !important;
+    visibility: visible !important;
+    overflow: visible !important;
+  }
+
+  .resume-page {
+    position: relative !important;
     margin: 0 !important;
     box-shadow: none !important;
+    transform: none !important;
+    width: 8.5in !important;
+    height: 11in !important;
+    overflow: hidden !important;
+    page-break-after: always;
+    box-sizing: border-box !important;
   }
-  .resume-pages-stack {
-    height: auto !important;
-  }
-  .page-number { display: none !important; }
+  .resume-page:last-child { page-break-after: auto; }
   @page { size: letter; margin: 0; }
 }
 
@@ -438,7 +443,10 @@
 /* Hide drag handles, gap handles, and editable outlines in print */
 @media print {
   .section-drag-handle { display: none !important; }
-  .gap-handle-zone, .gap-handle-zone-h { display: none !important; }
+  .gap-handle-zone { display: none !important; }
+  .gap-handle-zone-h { pointer-events: none !important; cursor: default !important; background: none !important; outline: none !important; }
+  .gap-handle-zone-h .gap-handle-label,
+  .gap-handle-zone-h .gap-handle-input { display: none !important; }
   .editable-text { outline: none !important; cursor: default !important; }
   .editable-text:hover { outline: none !important; }
   .resize-handle { display: none !important; }

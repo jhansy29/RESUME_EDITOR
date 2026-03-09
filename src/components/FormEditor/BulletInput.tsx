@@ -5,9 +5,10 @@ interface Props {
   text: string;
   onChange: (text: string) => void;
   onRemove: () => void;
+  dragListeners?: Record<string, unknown>;
 }
 
-export function BulletInput({ text, onChange, onRemove }: Props) {
+export function BulletInput({ text, onChange, onRemove, dragListeners }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea
@@ -21,7 +22,7 @@ export function BulletInput({ text, onChange, onRemove }: Props) {
   return (
     <div>
       <div className="bullet-editor">
-        <span className="drag-handle">⠿</span>
+        <span className="drag-handle" {...dragListeners}>⠿</span>
         <textarea
           ref={ref}
           className="bullet-textarea"
