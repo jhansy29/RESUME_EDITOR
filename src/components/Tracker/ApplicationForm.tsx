@@ -33,6 +33,7 @@ export function ApplicationForm({ onClose }: Props) {
   const [contactEmail, setContactEmail] = useState('');
   const [scraping, setScraping] = useState(false);
   const [scrapeError, setScrapeError] = useState('');
+  const [duplicateWarning, setDuplicateWarning] = useState('');
 
   useEffect(() => {
     if (editing) {
@@ -54,7 +55,15 @@ export function ApplicationForm({ onClose }: Props) {
 
   const handleUrlPaste = async (pastedUrl: string) => {
     setUrl(pastedUrl);
+    setDuplicateWarning('');
     if (!pastedUrl.match(/^https?:\/\/.+/)) return;
+
+    // Check for duplicate URL in existing applications
+    const trimmed = pastedUrl.trim();
+    const duplicate = applications.find((a) => a.url?.trim() === trimmed);
+    if (duplicate && (!editing || editing._id !== duplicate._id)) {
+      setDuplicateWarning(`Already tracked: ${duplicate.company} - ${duplicate.jobTitle}`);
+    }
 
     setScraping(true);
     setScrapeError('');
@@ -75,6 +84,7 @@ export function ApplicationForm({ onClose }: Props) {
   const handleUrlChange = (value: string) => {
     setUrl(value);
     setScrapeError('');
+    setDuplicateWarning('');
   };
 
   const handleUrlFieldPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
@@ -88,6 +98,7 @@ export function ApplicationForm({ onClose }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!company.trim() || !jobTitle.trim()) return;
+    if (duplicateWarning && !editing) return; // Block submission for duplicates
     const data = {
       company, jobTitle, status, url, location, salaryRange,
       resumeVersion, dateApplied, notes, priority, contactName, contactEmail,
@@ -106,6 +117,7 @@ export function ApplicationForm({ onClose }: Props) {
         <h3 className="tracker-form-title">{editing ? 'Edit Application' : 'Add Application'}</h3>
         {scraping && <span className="tracker-scraping">Fetching job details...</span>}
         {scrapeError && <span className="tracker-scrape-error">{scrapeError}</span>}
+        {duplicateWarning && <span className="tracker-scrape-error">{duplicateWarning}</span>}
       </div>
 
       <div className="tracker-quick-row">

@@ -21,6 +21,10 @@ export async function createApplication(data: Partial<ApplicationInput>): Promis
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
+  if (res.status === 409) {
+    const body = await res.json();
+    throw new Error(body.message || 'Duplicate application');
+  }
   if (!res.ok) throw new Error('Failed to create application');
   return res.json();
 }

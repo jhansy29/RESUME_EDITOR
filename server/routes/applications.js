@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import mongoose from 'mongoose';
 import { Application } from '../models/Application.js';
-import { checkQuota } from '../middleware/quota.js';
 
 export const applicationsRouter = Router();
 
@@ -27,8 +26,20 @@ applicationsRouter.get('/:id', async (req, res) => {
 });
 
 // Create application
-applicationsRouter.post('/', checkQuota(Application, 'maxApplications'), async (req, res) => {
+applicationsRouter.post('/', async (req, res) => {
   try {
+    // Check for duplicate URL (non-empty URLs only)
+    const url = (req.body.url || '').trim();
+    if (url) {
+      const existing = await Application.findOne({ userId: req.userId, url });
+      if (existing) {
+        return res.status(409).json({
+          error: 'duplicate',
+          message: `This URL is already tracked under "${existing.company} - ${existing.jobTitle}"`,
+          existingId: existing._id,
+        });
+      }
+    }
     const app = await Application.create({ ...req.body, userId: req.userId });
     res.status(201).json(app);
   } catch (err) {
