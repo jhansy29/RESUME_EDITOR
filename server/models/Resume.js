@@ -6,7 +6,8 @@ const bulletSchema = new mongoose.Schema({
 }, { _id: false });
 
 const resumeSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  name: { type: String, required: true },
   contact: {
     name: String,
     phone: String,
@@ -72,5 +73,7 @@ const resumeSchema = new mongoose.Schema({
   timestamps: true,
   toJSON: { virtuals: false, versionKey: false },
 });
+
+resumeSchema.index({ userId: 1, name: 1 }, { unique: true });
 
 export const Resume = mongoose.model('Resume', resumeSchema);

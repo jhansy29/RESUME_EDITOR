@@ -67,7 +67,7 @@
   gap: 10px;
   padding: 8px 12px;
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e2e5ea;
   border-radius: 6px;
   font-size: 12px;
   color: #475569;
@@ -98,7 +98,7 @@
 }
 
 .sug-card {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e2e5ea;
   border-radius: 8px;
   padding: 10px 12px;
   background: white;

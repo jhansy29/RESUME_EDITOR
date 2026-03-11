@@ -1,5 +1,5 @@
 /* ============================================
-   APPLICATION TRACKER
+   APPLICATION TRACKER — Production-Grade
    ============================================ */
 
 .tracker-container {
@@ -7,6 +7,12 @@
   margin: 0 auto;
   padding: 32px 24px;
   width: 100%;
+  animation: tracker-fade-in 0.4s ease-out;
+}
+
+@keyframes tracker-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .tracker-loading {
@@ -14,7 +20,7 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  color: #6b7280;
+  color: #64748b;
   font-size: 14px;
 }
 
@@ -29,31 +35,33 @@
 .tracker-title {
   font-size: 22px;
   font-weight: 800;
-  color: #1f2937;
+  color: #1e293b;
   letter-spacing: -0.02em;
 }
 
 .tracker-subtitle {
   font-size: 13px;
-  color: #9ca3af;
+  color: #94a3b8;
   margin-top: 2px;
 }
 
 .tracker-add-btn {
   padding: 10px 24px;
-  background: #6366f1;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
   color: #fff;
   border: none;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.3);
 }
 
 .tracker-add-btn:hover {
-  background: #5558e6;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  background: linear-gradient(135deg, #4338ca, #5558e6);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+  transform: translateY(-0.5px);
 }
 
 /* --- Stats --- */
@@ -68,13 +76,18 @@
   flex: 1;
   min-width: 120px;
   background: #fff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2e5ea;
   border-radius: 12px;
   padding: 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: box-shadow 0.2s;
+}
+
+.tracker-stat-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .tracker-stat-value {
@@ -85,7 +98,7 @@
 
 .tracker-stat-label {
   font-size: 12px;
-  color: #6b7280;
+  color: #64748b;
   font-weight: 500;
 }
 
@@ -99,31 +112,31 @@
 .tracker-search {
   flex: 1;
   padding: 10px 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #dde0e4;
   border-radius: 8px;
   font-size: 13px;
   background: #fff;
-  color: #1f2937;
-  transition: border-color 0.15s;
+  color: #1e293b;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .tracker-search:focus {
   outline: none;
   border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .tracker-search::placeholder {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
 .tracker-filter {
   padding: 10px 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #dde0e4;
   border-radius: 8px;
   font-size: 13px;
   background: #fff;
-  color: #1f2937;
+  color: #1e293b;
   cursor: pointer;
   min-width: 160px;
 }
@@ -136,10 +149,10 @@
 /* --- Table --- */
 .tracker-table-wrap {
   background: #fff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2e5ea;
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
 .tracker-table {
@@ -155,9 +168,9 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #6b7280;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
+  color: #64748b;
+  background: #f8f9fb;
+  border-bottom: 1px solid #e2e5ea;
   white-space: nowrap;
   user-select: none;
 }
@@ -173,7 +186,7 @@
 
 .tracker-td {
   padding: 12px 16px;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid #f1f3f5;
   color: #374151;
   vertical-align: middle;
 }
@@ -189,7 +202,7 @@
 .tracker-empty {
   text-align: center;
   padding: 48px 16px !important;
-  color: #9ca3af;
+  color: #94a3b8;
   font-size: 14px;
 }
 
@@ -201,7 +214,7 @@
 
 .tracker-company-name {
   font-weight: 600;
-  color: #1f2937;
+  color: #1e293b;
 }
 
 .tracker-link {
@@ -219,7 +232,7 @@
 .tracker-date {
   white-space: nowrap;
   font-size: 12px;
-  color: #6b7280;
+  color: #64748b;
 }
 
 /* --- Status Badge (inline select) --- */
@@ -254,14 +267,14 @@
 
 .tracker-action-btn {
   padding: 4px 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #dde0e4;
   border-radius: 6px;
   background: #fff;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
-  color: #6b7280;
+  color: #64748b;
 }
 
 .tracker-action-btn.edit:hover {
@@ -279,17 +292,17 @@
 /* --- Form --- */
 .tracker-form {
   background: #fff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2e5ea;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .tracker-form-title {
   font-size: 16px;
   font-weight: 700;
-  color: #1f2937;
+  color: #1e293b;
   margin-bottom: 20px;
 }
 
@@ -313,7 +326,7 @@
 .tracker-field label {
   font-size: 11px;
   font-weight: 600;
-  color: #6b7280;
+  color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -322,12 +335,12 @@
 .tracker-field select,
 .tracker-field textarea {
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 1px solid #dde0e4;
+  border-radius: 7px;
   font-size: 13px;
-  color: #1f2937;
+  color: #1e293b;
   background: #fff;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
   font-family: inherit;
 }
 
@@ -336,12 +349,12 @@
 .tracker-field textarea:focus {
   outline: none;
   border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .tracker-field input::placeholder,
 .tracker-field textarea::placeholder {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
 .tracker-field textarea {
@@ -357,10 +370,10 @@
 
 .tracker-cancel-btn {
   padding: 8px 20px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 1px solid #dde0e4;
+  border-radius: 7px;
   background: #fff;
-  color: #6b7280;
+  color: #64748b;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -368,25 +381,26 @@
 }
 
 .tracker-cancel-btn:hover {
-  background: #f3f4f6;
-  color: #1f2937;
+  background: #f1f3f5;
+  color: #1e293b;
 }
 
 .tracker-save-btn {
   padding: 8px 24px;
   border: none;
-  border-radius: 6px;
-  background: #6366f1;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
   color: #fff;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.3);
 }
 
 .tracker-save-btn:hover {
-  background: #5558e6;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  background: linear-gradient(135deg, #4338ca, #5558e6);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
 }
 
 .tracker-save-btn:disabled {
@@ -437,22 +451,22 @@
   flex: 1;
   min-width: 140px;
   padding: 9px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 1px solid #dde0e4;
+  border-radius: 7px;
   font-size: 13px;
-  color: #1f2937;
+  color: #1e293b;
   background: #fff;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .tracker-quick-input:focus {
   outline: none;
   border-color: #6366f1;
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.12);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .tracker-quick-input::placeholder {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
 .tracker-url-input {
@@ -461,10 +475,10 @@
 
 .tracker-quick-select {
   padding: 9px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
+  border: 1px solid #dde0e4;
+  border-radius: 7px;
   font-size: 13px;
-  color: #1f2937;
+  color: #1e293b;
   background: #fff;
   cursor: pointer;
   min-width: 120px;

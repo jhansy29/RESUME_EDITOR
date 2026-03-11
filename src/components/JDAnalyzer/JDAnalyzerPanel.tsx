@@ -6,6 +6,9 @@ import { useVaultStore } from '../../hooks/useVaultStore';
 import { listResumes, getResume, duplicateResume, type ResumeMeta } from '../../api/resumeApi';
 import { JDKeywordDisplay } from './JDKeywordDisplay';
 import { ATSScoreCard } from './ATSScoreCard';
+import { JobscanScoreCard } from './JobscanScoreCard';
+import { TailorPreview } from './TailorPreview';
+import { WorkflowStepper } from './WorkflowStepper';
 import type { ResumeData } from '../../types/resume';
 import '../../styles/jd.css';
 
@@ -18,6 +21,25 @@ export function JDAnalyzerPanel() {
   const analyze = useJDStore((s) => s.analyze);
   const rescore = useJDStore((s) => s.rescore);
   const clearAnalysis = useJDStore((s) => s.clearAnalysis);
+
+  // Workflow
+  const workflowStep = useJDStore((s) => s.workflowStep);
+
+  // Tailor
+  const tailorResult = useJDStore((s) => s.tailorResult);
+  const tailorLoading = useJDStore((s) => s.tailorLoading);
+  const tailorAccepted = useJDStore((s) => s.tailorAccepted);
+  const generateTailor = useJDStore((s) => s.generateTailor);
+  const clearTailor = useJDStore((s) => s.clearTailor);
+
+  // Jobscan
+  const jobscanReport = useJDStore((s) => s.jobscanReport);
+  const jobscanLoading = useJDStore((s) => s.jobscanLoading);
+  const jobscanError = useJDStore((s) => s.jobscanError);
+  const runJobscanScan = useJDStore((s) => s.runJobscanScan);
+  const runJobscanRescan = useJDStore((s) => s.runJobscanRescan);
+  const checkJobscanStatus = useJDStore((s) => s.checkJobscanStatus);
+  const jobscanStatus = useJDStore((s) => s.jobscanStatus);
 
   // Saved JDs
   const savedJDs = useJDStore((s) => s.savedJDs);
@@ -33,6 +55,13 @@ export function JDAnalyzerPanel() {
   const loadData = useResumeStore((s) => s.loadData);
   const setMongoId = useResumeStore((s) => s.setMongoId);
   const resumeData = useResumeStore((s) => s.data);
+
+  // Resume store mutation methods for applying tailored changes
+  const updateSummary = useResumeStore((s) => s.updateSummary);
+  const updateSkillRow = useResumeStore((s) => s.updateSkillRow);
+  const addSkillRow = useResumeStore((s) => s.addSkillRow);
+  const updateBullet = useResumeStore((s) => s.updateBullet);
+  const reorderBullets = useResumeStore((s) => s.reorderBullets);
 
   // Suggestions
   const generateSuggestions = useSuggestionsStore((s) => s.generate);
@@ -51,6 +80,7 @@ export function JDAnalyzerPanel() {
   useEffect(() => {
     listResumes().then(setResumes).catch(() => {});
     loadSavedJDs();
+    checkJobscanStatus();
   }, []);
 
   const handleSelectResume = async (id: string) => {
@@ -60,17 +90,16 @@ export function JDAnalyzerPanel() {
     setMongoId(_id);
   };
 
-  const handleAnalyze = async () => {
-    await analyze(mongoId || undefined);
-  };
-
   const handleAnalyzeAndScore = async () => {
     await analyze(mongoId || undefined);
-    // After analysis, auto-generate suggestions
     const currentAnalysis = useJDStore.getState().analysis;
     if (currentAnalysis && vault) {
       generateSuggestions(currentAnalysis, vault, resumeData);
     }
+  };
+
+  const handleAnalyze = async () => {
+    await analyze(mongoId || undefined);
   };
 
   const handleRescore = async () => {
@@ -105,10 +134,93 @@ export function JDAnalyzerPanel() {
     setSaving(false);
   };
 
-  const resumeName = resumes.find((r) => r._id === mongoId)?.name;
+  const handleOptimize = async () => {
+    if (!mongoId) return;
+    await generateTailor(mongoId);
+  };
+
+  const handleApplyTailorChanges = () => {
+    if (!tailorResult) return;
+
+    // Apply summary
+    if (tailorAccepted['summary'] && tailorResult.summary) {
+      updateSummary(tailorResult.summary);
+    }
+
+    // Apply skills
+    if (tailorAccepted['skills'] && tailorResult.skills) {
+      for (const newSkill of tailorResult.skills) {
+        const existing = resumeData.skills.find((s) => s.id === newSkill.id);
+        if (existing) {
+          if (existing.category !== newSkill.category) updateSkillRow(existing.id, 'category', newSkill.category);
+          if (existing.skills !== newSkill.skills) updateSkillRow(existing.id, 'skills', newSkill.skills);
+        } else {
+          // New skill row: add it then update
+          addSkillRow();
+          // Get the latest skills array to find the newly added row
+          const latestSkills = useResumeStore.getState().data.skills;
+          const addedRow = latestSkills[latestSkills.length - 1];
+          if (addedRow) {
+            updateSkillRow(addedRow.id, 'category', newSkill.category);
+            updateSkillRow(addedRow.id, 'skills', newSkill.skills);
+          }
+        }
+      }
+    }
+
+    // Apply bullet changes
+    if (tailorResult.bulletChanges) {
+      for (const bc of tailorResult.bulletChanges) {
+        if (!tailorAccepted[bc.bulletId]) continue;
+        updateBullet(bc.entryId, bc.bulletId, bc.revised, bc.section);
+      }
+    }
+
+    // Apply bullet reorders
+    if (tailorResult.bulletReorders) {
+      for (const br of tailorResult.bulletReorders) {
+        if (!tailorAccepted[`reorder-${br.entryId}`]) continue;
+        const entry = br.section === 'experience'
+          ? resumeData.experience.find((e) => e.id === br.entryId)
+          : resumeData.projects.find((p) => p.id === br.entryId);
+        if (!entry) continue;
+
+        // Apply reorder by moving bullets to match the target order
+        const currentBullets = entry.bullets;
+        for (let targetIdx = 0; targetIdx < br.bulletIds.length; targetIdx++) {
+          const bulletId = br.bulletIds[targetIdx];
+          const currentIdx = currentBullets.findIndex((b) => b.id === bulletId);
+          if (currentIdx !== -1 && currentIdx !== targetIdx) {
+            reorderBullets(br.entryId, currentIdx, targetIdx, br.section);
+          }
+        }
+      }
+    }
+
+    // Move to analyzed step (changes applied)
+    clearTailor();
+  };
+
+  const handleRunJobscan = async () => {
+    if (!mongoId) return;
+    // Check if we can do a rescan (already on match report)
+    if (jobscanStatus?.onMatchReport) {
+      await runJobscanRescan(mongoId);
+    } else {
+      await runJobscanScan(mongoId);
+    }
+  };
+
+  const handleReoptimize = async () => {
+    if (!mongoId) return;
+    await generateTailor(mongoId);
+  };
 
   return (
     <div className="jd-panel">
+      {/* Workflow Stepper */}
+      {workflowStep !== 'input' && <WorkflowStepper current={workflowStep} />}
+
       {/* Resume Selector */}
       <div className="jd-section-card">
         <div className="jd-section-label">Resume</div>
@@ -254,6 +366,84 @@ export function JDAnalyzerPanel() {
           </div>
 
           {analysis.atsScore && <ATSScoreCard score={analysis.atsScore} />}
+
+          {/* Optimize Button */}
+          {mongoId && analysis.atsScore && (
+            <div className="jd-optimize-actions">
+              <button
+                className="jd-optimize-btn"
+                onClick={handleOptimize}
+                disabled={tailorLoading}
+              >
+                {tailorLoading ? 'Optimizing...' : 'Optimize Resume for This JD'}
+              </button>
+              <button
+                className="jd-jobscan-btn"
+                onClick={handleRunJobscan}
+                disabled={jobscanLoading}
+              >
+                {jobscanLoading ? 'Scanning...' : 'Run Jobscan ATS Scan'}
+              </button>
+              {/* Jobscan status indicator */}
+              <span
+                className={`jscan-status-dot ${jobscanStatus?.active ? 'active' : ''}`}
+                title={jobscanStatus?.active ? 'Jobscan session active' : 'Jobscan not connected'}
+              />
+            </div>
+          )}
+
+          {/* Tailor Preview */}
+          {(workflowStep === 'tailor-preview' || workflowStep === 'tailoring') && tailorResult && (
+            <TailorPreview result={tailorResult} onApply={handleApplyTailorChanges} />
+          )}
+
+          {tailorLoading && (
+            <div className="jd-loading-card">
+              <div className="jd-spinner" />
+              <span>Generating optimized resume...</span>
+            </div>
+          )}
+
+          {/* Jobscan Results */}
+          {jobscanReport && (
+            <div className="jscan-results-section">
+              <JobscanScoreCard report={jobscanReport} />
+
+              {jobscanReport.matchRate < 90 && mongoId && (
+                <div className="jscan-reoptimize">
+                  <p className="jscan-reoptimize-msg">
+                    Score is {jobscanReport.matchRate}% (target: 90%+).
+                    {jobscanReport.hardSkills.missing.length > 0 &&
+                      ` Missing: ${jobscanReport.hardSkills.missing.slice(0, 5).join(', ')}${jobscanReport.hardSkills.missing.length > 5 ? '...' : ''}`
+                    }
+                  </p>
+                  <div className="jscan-reoptimize-actions">
+                    <button className="jd-optimize-btn" onClick={handleReoptimize} disabled={tailorLoading}>
+                      {tailorLoading ? 'Optimizing...' : 'Auto-Fix Remaining Gaps'}
+                    </button>
+                    <button className="jd-jobscan-btn" onClick={handleRunJobscan} disabled={jobscanLoading}>
+                      {jobscanLoading ? 'Scanning...' : 'Re-Scan'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {jobscanReport.matchRate >= 90 && (
+                <div className="jscan-success">
+                  ATS score is {jobscanReport.matchRate}% - ready to apply!
+                </div>
+              )}
+            </div>
+          )}
+
+          {jobscanLoading && (
+            <div className="jd-loading-card">
+              <div className="jd-spinner" />
+              <span>Running Jobscan ATS scan (this takes ~30s)...</span>
+            </div>
+          )}
+
+          {jobscanError && <div className="jd-error">{jobscanError}</div>}
 
           <JDKeywordDisplay
             mustHave={analysis.keywords.mustHave}

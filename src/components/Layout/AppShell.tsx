@@ -23,19 +23,59 @@ export function AppShell() {
   const activeSection = useResumeStore((s) => s.activeSection);
   const loadData = useResumeStore((s) => s.loadData);
   const setMongoId = useResumeStore((s) => s.setMongoId);
+  const setResumeName = useResumeStore((s) => s.setResumeName);
   const setLoading = useResumeStore((s) => s.setLoading);
   const loading = useResumeStore((s) => s.loading);
   const mongoId = useResumeStore((s) => s.mongoId);
 
   const [resumes, setResumes] = useState<ResumeMeta[]>([]);
   const [showList, setShowList] = useState(false);
-  const [view, setView] = useState<AppView>('home');
 
-  // Pre-load resume list on mount (don't auto-navigate away from home)
+  // Parse initial view and resume ID from URL hash
+  const parseHash = (): { view: AppView; resumeId: string | null } => {
+    const hash = window.location.hash.slice(1); // remove #
+    const params = new URLSearchParams(hash);
+    const v = params.get('view') as AppView | null;
+    const validViews: AppView[] = ['home', 'editor', 'vault', 'jd-analyzer', 'tracker'];
+    return {
+      view: v && validViews.includes(v) ? v : 'home',
+      resumeId: params.get('resume'),
+    };
+  };
+
+  const initialHash = parseHash();
+  const [view, setView] = useState<AppView>(initialHash.view);
+
+  // Sync view + resume ID to URL hash
+  const updateHash = (v: AppView, resumeId?: string | null) => {
+    const params = new URLSearchParams();
+    params.set('view', v);
+    if (resumeId) params.set('resume', resumeId);
+    window.location.hash = params.toString();
+  };
+
+  // On mount: restore state from hash
   useEffect(() => {
+    const { view: hashView, resumeId } = parseHash();
     listResumes()
-      .then((list) => {
+      .then(async (list) => {
         setResumes(list);
+        // If hash points to editor/jd-analyzer with a specific resume, restore it
+        if ((hashView === 'editor' || hashView === 'jd-analyzer') && resumeId) {
+          try {
+            const doc = await getResume(resumeId);
+            const { _id, name, __v, createdAt, updatedAt, ...data } = doc;
+            loadData(data as ResumeData);
+            setMongoId(_id);
+            if (name) setResumeName(name);
+            setShowList(false);
+          } catch {
+            // Resume not found, show list
+            setShowList(true);
+          }
+        } else if (hashView === 'editor') {
+          setShowList(true);
+        }
         setLoading(false);
       })
       .catch(() => {
@@ -51,14 +91,17 @@ export function AppShell() {
       setShowList(true);
     }
     setView(target);
+    updateHash(target, (target === 'editor' || target === 'jd-analyzer') ? mongoId : null);
   };
 
   const handleSelectResume = async (id: string) => {
     const doc = await getResume(id);
-    const { _id, __v, createdAt, updatedAt, ...data } = doc;
+    const { _id, name, __v, createdAt, updatedAt, ...data } = doc;
     loadData(data as ResumeData);
     setMongoId(_id);
+    if (name) setResumeName(name);
     setShowList(false);
+    updateHash('editor', _id);
   };
 
   const handleCreateResume = async (name: string) => {
@@ -66,16 +109,20 @@ export function AppShell() {
     const { _id, __v, createdAt, updatedAt, ...data } = doc;
     loadData(data as ResumeData);
     setMongoId(_id);
+    setResumeName(name);
     setResumes(await listResumes());
     setShowList(false);
+    updateHash('editor', _id);
   };
 
   const handleDuplicateResume = async (id: string, name?: string) => {
     const doc = await duplicateResume(id, name);
-    const { _id, __v, createdAt, updatedAt, ...data } = doc;
+    const { _id, name: docName, __v, createdAt, updatedAt, ...data } = doc;
     loadData(data as ResumeData);
     setMongoId(_id);
+    if (docName) setResumeName(docName);
     setResumes(await listResumes());
+    updateHash('editor', _id);
   };
 
   const handleDeleteResume = async (id: string) => {
@@ -85,13 +132,15 @@ export function AppShell() {
 
   const handleSaveAsVersion = async () => {
     if (!mongoId) return;
-    const name = prompt('Name for the new version:');
-    if (!name) return;
-    const doc = await duplicateResume(mongoId, name);
+    const versionName = prompt('Name for the new version:');
+    if (!versionName) return;
+    const doc = await duplicateResume(mongoId, versionName);
     const { _id, __v, createdAt, updatedAt, ...data } = doc;
     loadData(data as ResumeData);
     setMongoId(_id);
+    setResumeName(versionName);
     setResumes(await listResumes());
+    updateHash('editor', _id);
   };
 
   const handleApplyTemplate = async (templateId: string, resumeName: string) => {
@@ -108,8 +157,10 @@ export function AppShell() {
     const { _id, __v, createdAt, updatedAt, ...data } = doc;
     loadData(data as ResumeData);
     setMongoId(_id);
+    setResumeName(resumeName);
     setResumes(await listResumes());
     setShowList(false);
+    updateHash('editor', _id);
   };
 
   const handleRefreshList = async () => {
@@ -134,7 +185,7 @@ export function AppShell() {
   if (view === 'editor' && showList) {
     return (
       <div className="app-shell">
-        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={handleNavigate} />
+        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={handleNavigate} showList />
         <ResumeList
           resumes={resumes}
           onSelect={handleSelectResume}

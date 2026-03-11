@@ -149,7 +149,7 @@
 .entry-role { font-style: italic; }
 .entry-dates { font-style: italic; flex-shrink: 0; }
 
-/* --- Sub-bullets (◦) --- */
+/* --- Sub-bullets --- */
 .bullet-list {
   padding-left: 12pt;
   margin: 0;
@@ -213,21 +213,15 @@
 .project-bullets .bullet-item strong { font-weight: 700; }
 
 /* --- Layout Schema Utilities --- */
-
-/* No bullet marker */
 .edu-entry.no-bullet,
 .entry.no-bullet,
 .project-entry.no-bullet {
   display: block;
 }
 
-/* Dynamic bold/italic from layout config */
 .field-bold { font-weight: 700; }
 .field-italic { font-style: italic; }
-
-/* Row spacer — pushes adjacent fields apart within a flex row */
 .row-spacer { flex: 1; }
-
 
 /* Contact layout variants */
 .resume-contact.contact-stacked {
@@ -250,7 +244,6 @@
   content: none;
 }
 
-/* Dynamic contact separator via CSS variable */
 .resume-contact > span + span::before {
   content: var(--contact-sep, ' | ');
 }
@@ -262,7 +255,6 @@
   gap: 0 12pt;
 }
 
-/* Hide bullet marker on skill rows */
 .skill-row.no-bullet::before {
   content: none;
 }
@@ -284,13 +276,14 @@
 .overflow-warning {
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  background: #ff4444;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
   color: #fff;
   text-align: center;
   font-size: 9pt;
-  padding: 2pt 0;
+  padding: 3pt 0;
   font-family: system-ui, sans-serif;
   z-index: 10;
+  font-weight: 500;
 }
 
 /* --- Page Number --- */
@@ -312,13 +305,11 @@
 
 /* --- Print --- */
 @media print {
-  /* Hide everything except resume pages */
   .ribbon, .toolbar, .section-sidebar, .form-panel,
   .resume-measure, .page-number {
     display: none !important;
   }
 
-  /* Reset all parent containers — override inline styles with !important */
   body, #root, .app-shell, .main-content, .preview-panel,
   .resume-preview-container,
   .resume-pages-stack, .resume-page-slot, .resume-preview-wrapper {
@@ -394,11 +385,11 @@
   outline: 1px dashed #ccc;
 }
 .editable-text:focus {
-  outline: 1px solid #4a90d9;
+  outline: 1.5px solid #4a90d9;
   outline-offset: 1px;
   background: rgba(74, 144, 217, 0.04);
 }
-/* Resize handles — left and right */
+/* Resize handles */
 .resize-handle {
   position: absolute;
   top: 0;
@@ -440,7 +431,7 @@
   font-style: italic;
 }
 
-/* Hide drag handles, gap handles, and editable outlines in print */
+/* Hide interactive elements in print */
 @media print {
   .section-drag-handle { display: none !important; }
   .gap-handle-zone { display: none !important; }
@@ -555,12 +546,8 @@
 
 /* --- Screen Preview --- */
 .resume-preview-container {
-  display: flex;
-  justify-content: center;
   padding: 24px;
-  overflow: auto;
-  background: #e8eaef;
-  min-height: 100%;
+  background: #e4e7ed;
   position: relative;
 }
 .resume-pages-stack {
@@ -574,7 +561,10 @@
 }
 .resume-preview-wrapper {
   transform-origin: top center;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.04);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
   border-radius: 4px;
   flex-shrink: 0;
 }

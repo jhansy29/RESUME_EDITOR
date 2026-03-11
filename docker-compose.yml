@@ -10,6 +10,10 @@ services:
       - PORT=3001
       - MONGODB_URI=mongodb://mongo:27017/resume-editor
       - NVIDIA_API_KEY=${NVIDIA_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost}
+      - NODE_ENV=production
     depends_on:
       - mongo
     restart: unless-stopped

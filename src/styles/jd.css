@@ -6,14 +6,20 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  background: #f8f9fb;
 }
 
 /* === Section Cards === */
 .jd-section-card {
   background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border: 1px solid #e2e5ea;
+  border-radius: 10px;
   padding: 10px 12px;
+  transition: box-shadow 0.15s;
+}
+
+.jd-section-card:hover {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
 .jd-section-label {
@@ -29,7 +35,7 @@
 .jd-select {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #dde0e4;
   border-radius: 6px;
   font-size: 13px;
   font-family: inherit;
@@ -97,7 +103,7 @@
   flex: 1;
   min-width: 120px;
   padding: 6px 10px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #dde0e4;
   border-radius: 5px;
   font-size: 12px;
   font-family: inherit;
@@ -128,7 +134,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e2e5ea;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s;
@@ -213,7 +219,7 @@
   width: 100%;
   margin-top: 6px;
   padding: 8px 10px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #dde0e4;
   border-radius: 6px;
   font-size: 12px;
   font-family: inherit;
@@ -384,7 +390,7 @@
 /* === ATS Score Card === */
 .ats-card {
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e2e5ea;
   border-radius: 8px;
   padding: 10px 12px;
 }
@@ -484,7 +490,7 @@
 
 /* === Requirements === */
 .jd-requirements {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #e2e5ea;
   border-radius: 8px;
   padding: 12px;
 }
@@ -526,4 +532,501 @@
   color: #92400e;
   border-radius: 12px;
   border: 1px solid #fde68a;
+}
+
+/* === Workflow Stepper === */
+.wf-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e5ea;
+  border-radius: 8px;
+}
+
+.wf-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.wf-step-dot {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  background: #e2e8f0;
+  color: #94a3b8;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.wf-step.active .wf-step-dot {
+  background: #6366f1;
+  color: white;
+}
+
+.wf-step.done .wf-step-dot {
+  background: #22c55e;
+  color: white;
+}
+
+.wf-step-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.wf-step.active .wf-step-label {
+  color: #6366f1;
+}
+
+.wf-step.done .wf-step-label {
+  color: #22c55e;
+}
+
+.wf-step-line {
+  flex: 1;
+  height: 2px;
+  background: #e2e8f0;
+  margin: 0 4px;
+  min-width: 8px;
+}
+
+.wf-step.done .wf-step-line {
+  background: #22c55e;
+}
+
+/* === Optimize / Jobscan Action Buttons === */
+.jd-optimize-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.jd-optimize-btn {
+  flex: 1;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.jd-optimize-btn:hover {
+  background: linear-gradient(135deg, #5558e6, #7c3aed);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.jd-optimize-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.jd-jobscan-btn {
+  flex: 1;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.jd-jobscan-btn:hover {
+  background: linear-gradient(135deg, #047857, #059669);
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
+}
+
+.jd-jobscan-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* === Jobscan Status Dot === */
+.jscan-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d1d5db;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.jscan-status-dot.active {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+}
+
+/* === Loading Card === */
+.jd-loading-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #0369a1;
+}
+
+.jd-spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #bae6fd;
+  border-top-color: #0284c7;
+  border-radius: 50%;
+  animation: jd-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes jd-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* === Jobscan Score Card === */
+.jscan-card {
+  background: #f8fafc;
+  border: 1px solid #e2e5ea;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.jscan-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.jscan-header h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.jscan-scan-id {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.jscan-body {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.jscan-score-ring {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.jscan-score-value {
+  position: absolute;
+  top: 36px;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.jscan-skills-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.jscan-skills-block h5 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.jscan-skill-group {
+  margin-bottom: 6px;
+}
+
+.jscan-skill-label {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-bottom: 3px;
+  font-weight: 500;
+}
+
+.jscan-skill-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.jscan-chip {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.jscan-chip.found {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.jscan-chip.missing {
+  background: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.jscan-findings {
+  margin-top: 10px;
+  display: flex;
+  gap: 12px;
+}
+
+.jscan-finding {
+  font-size: 11px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.jscan-finding-cat {
+  font-weight: 600;
+  text-transform: capitalize;
+  color: #475569;
+}
+
+.jscan-finding-status {
+  color: #dc2626;
+}
+
+/* === Jobscan Reoptimize === */
+.jscan-results-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jscan-reoptimize {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.jscan-reoptimize-msg {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #92400e;
+}
+
+.jscan-reoptimize-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.jscan-success {
+  padding: 10px 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #166534;
+  text-align: center;
+}
+
+/* === Tailor Preview === */
+.tp-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tp-header h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.tp-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tp-count {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.tp-change-group h5 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.tp-change-card {
+  background: #fff;
+  border: 1px solid #e2e5ea;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.tp-change-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+.tp-change-header input[type="checkbox"] {
+  accent-color: #6366f1;
+}
+
+.tp-change-type {
+  font-size: 11px;
+  font-weight: 600;
+  color: #4338ca;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* === Diff Display === */
+.tp-diff {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.tp-diff-old {
+  background: #fef2f2;
+  color: #991b1b;
+  padding: 6px 8px;
+  border-radius: 4px;
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.tp-diff-arrow {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.tp-diff-new {
+  background: #f0fdf4;
+  color: #166534;
+  padding: 6px 8px;
+  border-radius: 4px;
+}
+
+.tp-unchanged {
+  font-size: 12px;
+  color: #475569;
+  padding: 6px 8px;
+}
+
+/* === Skills Preview === */
+.tp-skills-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.tp-skill-row {
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1.4;
+}
+
+.tp-skill-row.new {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.tp-skill-row.changed {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.tp-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.tp-badge.new {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.tp-badge.changed {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* === Reorder Preview === */
+.tp-change-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tp-reorder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+}
+
+.tp-reorder-item {
+  display: flex;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #f8fafc;
+}
+
+.tp-reorder-num {
+  font-weight: 600;
+  color: #6366f1;
+  min-width: 16px;
 }

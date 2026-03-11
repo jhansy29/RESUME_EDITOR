@@ -1164,6 +1164,7 @@ generateRouter.post('/', upload.single('file'), async (req, res) => {
       css: css || '',
       sectionOrder,
       resumeData,
+      userId: req.userId,
     });
 
     res.status(201).json(doc);

@@ -3,15 +3,21 @@ import { Template } from '../models/Template.js';
 
 export const templateRouter = Router();
 
-// List all templates
-templateRouter.get('/', async (_req, res) => {
-  const list = await Template.find({}, 'name description updatedAt').sort({ updatedAt: -1 });
+// List all templates (user's own + system templates)
+templateRouter.get('/', async (req, res) => {
+  const list = await Template.find(
+    { $or: [{ userId: req.userId }, { userId: null }] },
+    'name description updatedAt userId'
+  ).sort({ updatedAt: -1 });
   res.json(list);
 });
 
-// Get single template by id
+// Get single template by id (user's own or system)
 templateRouter.get('/:id', async (req, res) => {
-  const doc = await Template.findById(req.params.id);
+  const doc = await Template.findOne({
+    _id: req.params.id,
+    $or: [{ userId: req.userId }, { userId: null }],
+  });
   if (!doc) return res.status(404).json({ error: 'Not found' });
   res.json(doc);
 });
@@ -19,7 +25,7 @@ templateRouter.get('/:id', async (req, res) => {
 // Create new template
 templateRouter.post('/', async (req, res) => {
   try {
-    const doc = await Template.create(req.body);
+    const doc = await Template.create({ ...req.body, userId: req.userId });
     res.status(201).json(doc);
   } catch (err) {
     if (err.code === 11000) {
@@ -29,10 +35,10 @@ templateRouter.post('/', async (req, res) => {
   }
 });
 
-// Update template
+// Update template (only user's own)
 templateRouter.patch('/:id', async (req, res) => {
-  const doc = await Template.findByIdAndUpdate(
-    req.params.id,
+  const doc = await Template.findOneAndUpdate(
+    { _id: req.params.id, userId: req.userId },
     { $set: req.body },
     { new: true, runValidators: true }
   );
@@ -40,8 +46,8 @@ templateRouter.patch('/:id', async (req, res) => {
   res.json(doc);
 });
 
-// Delete template
+// Delete template (only user's own)
 templateRouter.delete('/:id', async (req, res) => {
-  await Template.findByIdAndDelete(req.params.id);
+  await Template.findOneAndDelete({ _id: req.params.id, userId: req.userId });
   res.json({ ok: true });
 });

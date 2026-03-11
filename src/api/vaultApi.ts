@@ -1,17 +1,17 @@
 import type { ProfileVault } from '../types/vault';
 
-import { API_BASE } from './config';
+import { API_BASE, fetchWithAuth } from './config';
 
 const BASE = `${API_BASE}/vault`;
 
 export async function getVault(): Promise<ProfileVault | null> {
-  const res = await fetch(BASE);
+  const res = await fetchWithAuth(BASE);
   if (!res.ok) throw new Error('Failed to load vault');
   return res.json();
 }
 
 export async function createVault(data: Partial<ProfileVault>): Promise<ProfileVault> {
-  const res = await fetch(BASE, {
+  const res = await fetchWithAuth(BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -21,7 +21,7 @@ export async function createVault(data: Partial<ProfileVault>): Promise<ProfileV
 }
 
 export async function patchVault(id: string, section: Record<string, unknown>): Promise<ProfileVault> {
-  const res = await fetch(`${BASE}/${id}`, {
+  const res = await fetchWithAuth(`${BASE}/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(section),
@@ -31,12 +31,12 @@ export async function patchVault(id: string, section: Record<string, unknown>): 
 }
 
 export async function deleteVault(id: string): Promise<void> {
-  const res = await fetch(`${BASE}/${id}`, { method: 'DELETE' });
+  const res = await fetchWithAuth(`${BASE}/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to delete vault');
 }
 
 export async function importMasterText(id: string, text: string): Promise<ProfileVault> {
-  const res = await fetch(`${BASE}/${id}/import`, {
+  const res = await fetchWithAuth(`${BASE}/${id}/import`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),
@@ -49,7 +49,7 @@ export async function importMasterText(id: string, text: string): Promise<Profil
 }
 
 export async function importNewVault(text: string, name?: string): Promise<ProfileVault> {
-  const res = await fetch(`${BASE}/import-new`, {
+  const res = await fetchWithAuth(`${BASE}/import-new`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, name }),

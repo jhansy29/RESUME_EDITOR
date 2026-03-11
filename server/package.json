@@ -3,12 +3,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "migrate": "node scripts/migrate-to-multitenancy.js"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
     "express": "^4.21.0",
+    "express-rate-limit": "^8.3.1",
+    "jsonwebtoken": "^9.0.3",
     "mammoth": "^1.11.0",
     "mongoose": "^8.9.0",
     "multer": "^2.1.1",

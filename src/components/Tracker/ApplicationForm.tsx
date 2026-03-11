@@ -21,7 +21,7 @@ export function ApplicationForm({ onClose }: Props) {
   const [showFull, setShowFull] = useState(!!editing);
   const [company, setCompany] = useState('');
   const [jobTitle, setJobTitle] = useState('');
-  const [status, setStatus] = useState<ApplicationStatus>('Applied');
+  const [status, setStatus] = useState<ApplicationStatus>('Bookmarked');
   const [url, setUrl] = useState('');
   const [location, setLocation] = useState('');
   const [salaryRange, setSalaryRange] = useState('');

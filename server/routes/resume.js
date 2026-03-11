@@ -1,31 +1,32 @@
 import { Router } from 'express';
 import { Resume } from '../models/Resume.js';
+import { checkQuota } from '../middleware/quota.js';
 
 export const resumeRouter = Router();
 
 // List all resumes (just name + id + updatedAt)
-resumeRouter.get('/', async (_req, res) => {
-  const list = await Resume.find({}, 'name updatedAt').sort({ updatedAt: -1 });
+resumeRouter.get('/', async (req, res) => {
+  const list = await Resume.find({ userId: req.userId }, 'name updatedAt').sort({ updatedAt: -1 });
   res.json(list);
 });
 
 // Get single resume by id
 resumeRouter.get('/:id', async (req, res) => {
-  const doc = await Resume.findById(req.params.id);
+  const doc = await Resume.findOne({ _id: req.params.id, userId: req.userId });
   if (!doc) return res.status(404).json({ error: 'Not found' });
   res.json(doc);
 });
 
 // Create new resume
-resumeRouter.post('/', async (req, res) => {
-  const doc = await Resume.create(req.body);
+resumeRouter.post('/', checkQuota(Resume, 'maxResumes'), async (req, res) => {
+  const doc = await Resume.create({ ...req.body, userId: req.userId });
   res.status(201).json(doc);
 });
 
 // Duplicate a resume (create a copy with a new name)
 resumeRouter.post('/:id/duplicate', async (req, res) => {
   try {
-    const source = await Resume.findById(req.params.id);
+    const source = await Resume.findOne({ _id: req.params.id, userId: req.userId });
     if (!source) return res.status(404).json({ error: 'Not found' });
 
     const obj = source.toObject();
@@ -39,11 +40,12 @@ resumeRouter.post('/:id/duplicate', async (req, res) => {
     // Ensure uniqueness — append a number if name already exists
     let finalName = baseName;
     let counter = 1;
-    while (await Resume.findOne({ name: finalName })) {
+    while (await Resume.findOne({ name: finalName, userId: req.userId })) {
       counter++;
       finalName = `${baseName} ${counter}`;
     }
     obj.name = finalName;
+    obj.userId = req.userId;
 
     const doc = await Resume.create(obj);
     res.status(201).json(doc);
@@ -55,8 +57,8 @@ resumeRouter.post('/:id/duplicate', async (req, res) => {
 
 // Update a specific section of a resume
 resumeRouter.patch('/:id', async (req, res) => {
-  const doc = await Resume.findByIdAndUpdate(
-    req.params.id,
+  const doc = await Resume.findOneAndUpdate(
+    { _id: req.params.id, userId: req.userId },
     { $set: req.body },
     { new: true, runValidators: true }
   );
@@ -66,9 +68,9 @@ resumeRouter.patch('/:id', async (req, res) => {
 
 // Full replace
 resumeRouter.put('/:id', async (req, res) => {
-  const { _id, createdAt, updatedAt, ...data } = req.body;
-  const doc = await Resume.findByIdAndUpdate(
-    req.params.id,
+  const { _id, createdAt, updatedAt, userId, ...data } = req.body;
+  const doc = await Resume.findOneAndUpdate(
+    { _id: req.params.id, userId: req.userId },
     data,
     { new: true, runValidators: true, overwrite: true }
   );
@@ -78,6 +80,6 @@ resumeRouter.put('/:id', async (req, res) => {
 
 // Delete
 resumeRouter.delete('/:id', async (req, res) => {
-  await Resume.findByIdAndDelete(req.params.id);
+  await Resume.findOneAndDelete({ _id: req.params.id, userId: req.userId });
   res.json({ ok: true });
 });

@@ -76,7 +76,7 @@ function bulletParagraph(text: string, font: string, bodySize: number): Paragrap
   });
 }
 
-export async function exportDocx(data: ResumeData) {
+export async function exportDocx(data: ResumeData, name?: string) {
   const fmt = data.format ?? DEFAULT_FORMAT;
   const font = extractFontName(fmt.fontFamily);
   const bodySize = fmt.fontSize;
@@ -247,5 +247,5 @@ export async function exportDocx(data: ResumeData) {
   });
 
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, 'resume.docx');
+  saveAs(blob, name ? `${name}.docx` : 'resume.docx');
 }

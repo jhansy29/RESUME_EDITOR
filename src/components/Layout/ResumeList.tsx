@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { ResumeMeta } from '../../api/resumeApi';
 import { listTemplates, getTemplate, generateTemplate, deleteTemplate, type TemplateMeta } from '../../api/templateApi';
 import { TemplatePreviewModal } from './TemplatePreviewModal';
@@ -13,13 +13,33 @@ interface Props {
   onApplyTemplate?: (templateId: string, resumeName: string) => void;
 }
 
+function timeAgo(date: Date): string {
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return date.toLocaleDateString();
+}
+
 export function ResumeList({ resumes, onSelect, onCreate, onDuplicate, onDelete, onApplyTemplate }: Props) {
   const [newName, setNewName] = useState('');
+  const [search, setSearch] = useState('');
   const [templates, setTemplates] = useState<TemplateMeta[]>([]);
   const [previewData, setPreviewData] = useState<{ data: ResumeData; name: string; id: string } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const filteredResumes = useMemo(() => {
+    if (!search.trim()) return resumes;
+    const q = search.toLowerCase();
+    return resumes.filter(r => r.name.toLowerCase().includes(q));
+  }, [resumes, search]);
 
   useEffect(() => {
     listTemplates().then(setTemplates).catch(() => {});
@@ -118,46 +138,134 @@ export function ResumeList({ resumes, onSelect, onCreate, onDuplicate, onDelete,
   };
 
   return (
-    <div className="resume-list-container">
-      <h2>Your Resumes</h2>
-      {resumes.length === 0 && <p className="empty-msg">No resumes yet. Create one to get started.</p>}
-      <div className="resume-list">
-        {resumes.map((r) => (
-          <div key={r._id} className="resume-list-item" onClick={() => onSelect(r._id)}>
-            <div className="resume-list-info">
-              <span className="resume-list-name">{r.name}</span>
-              <span className="resume-list-date">
-                {new Date(r.updatedAt).toLocaleDateString()}
-              </span>
-            </div>
-            <div className="resume-list-actions">
-              <button
-                className="resume-action-btn duplicate"
-                title="Duplicate"
-                onClick={(e) => handleDuplicate(e, r)}
-              >
-                Copy
-              </button>
-              <button
-                className="resume-action-btn delete"
-                title="Delete"
-                onClick={(e) => handleDelete(e, r)}
-              >
-                Del
-              </button>
-            </div>
+    <div className="resume-page-layout">
+      {/* Left: Resumes (main area) */}
+      <div className="resume-main-panel">
+        <div className="resume-list-header">
+          <h2>Your Resumes <span className="resume-count">{resumes.length}</span></h2>
+          <div className="resume-search">
+            <input
+              className="search-input"
+              placeholder="Search resumes..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-        ))}
+        </div>
+        {resumes.length === 0 && <p className="empty-msg">No resumes yet. Create one to get started.</p>}
+        <div className="resume-grid">
+          {filteredResumes.map((r) => (
+            <div key={r._id} className="resume-card" onClick={() => onSelect(r._id)}>
+              <span className="resume-card-name">{r.name}</span>
+              <div className="resume-card-footer">
+                <span className="resume-card-date">{timeAgo(new Date(r.updatedAt))}</span>
+                <div className="resume-card-actions">
+                  <button
+                    className="resume-action-btn duplicate"
+                    title="Duplicate"
+                    onClick={(e) => handleDuplicate(e, r)}
+                  >
+                    Copy
+                  </button>
+                  <button
+                    className="resume-action-btn delete"
+                    title="Delete"
+                    onClick={(e) => handleDelete(e, r)}
+                  >
+                    Del
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          {search && filteredResumes.length === 0 && (
+            <p className="empty-msg" style={{ gridColumn: '1 / -1' }}>No resumes match "{search}"</p>
+          )}
+        </div>
+        <div className="create-resume">
+          <input
+            className="field-input"
+            placeholder="New resume name (e.g. AI ML Engineer - Google)"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+          />
+          <button className="create-btn" onClick={handleCreate}>Create</button>
+        </div>
       </div>
-      <div className="create-resume">
-        <input
-          className="field-input"
-          placeholder="New resume name (e.g. AI ML Engineer - Google)"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-        />
-        <button className="create-btn" onClick={handleCreate}>Create</button>
+
+      {/* Right: Templates sidebar */}
+      <div className="templates-sidebar">
+        <h2>Templates</h2>
+
+        <div className="upload-resume-section">
+          <p className="upload-description">Upload a resume to auto-generate a template.</p>
+          <div className="upload-actions">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".txt,.text,.pdf,.doc,.docx"
+              className="hidden-input"
+              onChange={handleFileUpload}
+            />
+            <button
+              className="upload-btn"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+            >
+              {uploading ? 'Generating...' : 'Upload'}
+            </button>
+            <button
+              className="upload-btn paste-btn"
+              onClick={handlePasteUpload}
+              disabled={uploading}
+            >
+              {uploading ? 'Generating...' : 'Paste Text'}
+            </button>
+          </div>
+          {uploading && <p className="upload-status">Parsing... 15-30s</p>}
+          {uploadError && <p className="upload-error">{uploadError}</p>}
+        </div>
+
+        {templates.length > 0 && (
+          <div className="template-list">
+            {templates.map((t) => (
+              <div key={t._id} className="template-card" onClick={() => handlePreview(t)}>
+                <span className="template-card-name">{t.name}</span>
+                <span className="template-card-desc">{t.description}</span>
+                <div className="template-card-actions">
+                  <button
+                    className="resume-action-btn"
+                    onClick={(e) => { e.stopPropagation(); handlePreview(t); }}
+                  >
+                    Preview
+                  </button>
+                  <button
+                    className="resume-action-btn duplicate"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const name = prompt('Name for the new resume:');
+                      if (name && onApplyTemplate) onApplyTemplate(t._id, name);
+                    }}
+                  >
+                    Use
+                  </button>
+                  <button
+                    className="resume-action-btn delete"
+                    title="Delete template"
+                    onClick={(e) => handleDeleteTemplate(e, t)}
+                  >
+                    Del
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {templates.length === 0 && !uploading && (
+          <p className="empty-msg">No templates yet.</p>
+        )}
       </div>
 
       {previewData && (
@@ -171,80 +279,6 @@ export function ResumeList({ resumes, onSelect, onCreate, onDuplicate, onDelete,
             if (name && onApplyTemplate) onApplyTemplate(previewData.id, name);
           }}
         />
-      )}
-
-      <h2 style={{ marginTop: 32 }}>Templates</h2>
-
-      {/* Upload section */}
-      <div className="upload-resume-section">
-        <p className="upload-description">Upload your resume (.pdf, .docx, or .txt) to auto-generate an editable template using AI.</p>
-        <div className="upload-actions">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".txt,.text,.pdf,.doc,.docx"
-            className="hidden-input"
-            onChange={handleFileUpload}
-          />
-          <button
-            className="upload-btn"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-          >
-            {uploading ? 'Generating...' : 'Upload Resume'}
-          </button>
-          <button
-            className="upload-btn paste-btn"
-            onClick={handlePasteUpload}
-            disabled={uploading}
-          >
-            {uploading ? 'Generating...' : 'Paste Resume Text'}
-          </button>
-        </div>
-        {uploading && <p className="upload-status">AI is parsing your resume... this may take 15-30 seconds.</p>}
-        {uploadError && <p className="upload-error">{uploadError}</p>}
-      </div>
-
-      {templates.length > 0 && (
-        <div className="resume-list">
-          {templates.map((t) => (
-            <div key={t._id} className="resume-list-item template-item" onClick={() => handlePreview(t)}>
-              <div className="resume-list-info">
-                <span className="resume-list-name">{t.name}</span>
-                <span className="resume-list-date">{t.description}</span>
-              </div>
-              <div className="resume-list-actions" style={{ opacity: 1 }}>
-                <button
-                  className="resume-action-btn"
-                  onClick={(e) => { e.stopPropagation(); handlePreview(t); }}
-                >
-                  Preview
-                </button>
-                <button
-                  className="resume-action-btn duplicate"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const name = prompt('Name for the new resume:');
-                    if (name && onApplyTemplate) onApplyTemplate(t._id, name);
-                  }}
-                >
-                  Use
-                </button>
-                <button
-                  className="resume-action-btn delete"
-                  title="Delete template"
-                  onClick={(e) => handleDeleteTemplate(e, t)}
-                >
-                  Del
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {templates.length === 0 && !uploading && (
-        <p className="empty-msg">No templates yet. Upload a resume to create one.</p>
       )}
     </div>
   );

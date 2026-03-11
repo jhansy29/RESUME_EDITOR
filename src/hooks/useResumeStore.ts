@@ -24,12 +24,14 @@ interface ResumeStore {
   data: ResumeData;
   activeSection: ResumeSection | null;
   mongoId: string | null;
+  resumeName: string | null;
   loading: boolean;
   _history: ResumeData[];
   _future: ResumeData[];
 
   setActiveSection: (section: ResumeSection | null) => void;
   setMongoId: (id: string) => void;
+  setResumeName: (name: string) => void;
   setLoading: (loading: boolean) => void;
   undo: () => void;
   redo: () => void;
@@ -143,12 +145,14 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
     data: loadInitialData(),
     activeSection: null,
     mongoId: null,
+    resumeName: null,
     loading: true,
     _history: [] as ResumeData[],
     _future: [] as ResumeData[],
 
     setActiveSection: (section) => set({ activeSection: section }),
     setMongoId: (id) => set({ mongoId: id }),
+    setResumeName: (name) => set({ resumeName: name }),
     setLoading: (loading) => set({ loading }),
     undo: () => {
       const { _history, data } = get();

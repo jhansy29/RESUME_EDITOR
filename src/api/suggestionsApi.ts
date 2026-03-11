@@ -3,7 +3,7 @@ import type { JDAnalysis } from '../types/jd';
 import type { ProfileVault } from '../types/vault';
 import type { ResumeData } from '../types/resume';
 
-import { API_BASE } from './config';
+import { API_BASE, fetchWithAuth } from './config';
 
 const BASE = `${API_BASE}/suggestions`;
 
@@ -12,7 +12,7 @@ export async function generateSuggestions(
   vault: ProfileVault | null,
   currentResume: ResumeData
 ): Promise<Suggestion[]> {
-  const res = await fetch(`${BASE}/generate`, {
+  const res = await fetchWithAuth(`${BASE}/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ jdAnalysis, vault, currentResume }),

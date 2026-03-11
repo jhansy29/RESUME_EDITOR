@@ -1,6 +1,6 @@
 import type { JDAnalysis, ATSScore } from '../types/jd';
 
-import { API_BASE } from './config';
+import { API_BASE, fetchWithAuth } from './config';
 
 const BASE = `${API_BASE}/jd`;
 
@@ -18,19 +18,19 @@ export interface SavedJDFull extends SavedJDMeta {
 }
 
 export async function listSavedJDs(): Promise<SavedJDMeta[]> {
-  const res = await fetch(`${BASE}/saved`);
+  const res = await fetchWithAuth(`${BASE}/saved`);
   if (!res.ok) throw new Error('Failed to list saved JDs');
   return res.json();
 }
 
 export async function getSavedJD(id: string): Promise<SavedJDFull> {
-  const res = await fetch(`${BASE}/saved/${id}`);
+  const res = await fetchWithAuth(`${BASE}/saved/${id}`);
   if (!res.ok) throw new Error('Failed to load saved JD');
   return res.json();
 }
 
 export async function createSavedJD(data: { title: string; company?: string; jobDescription: string; analysis?: JDAnalysis | null }): Promise<SavedJDFull> {
-  const res = await fetch(`${BASE}/saved`, {
+  const res = await fetchWithAuth(`${BASE}/saved`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -40,7 +40,7 @@ export async function createSavedJD(data: { title: string; company?: string; job
 }
 
 export async function updateSavedJD(id: string, data: Partial<SavedJDFull>): Promise<SavedJDFull> {
-  const res = await fetch(`${BASE}/saved/${id}`, {
+  const res = await fetchWithAuth(`${BASE}/saved/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -50,12 +50,12 @@ export async function updateSavedJD(id: string, data: Partial<SavedJDFull>): Pro
 }
 
 export async function deleteSavedJD(id: string): Promise<void> {
-  const res = await fetch(`${BASE}/saved/${id}`, { method: 'DELETE' });
+  const res = await fetchWithAuth(`${BASE}/saved/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to delete saved JD');
 }
 
 export async function analyzeJD(jobDescription: string, resumeId?: string): Promise<JDAnalysis> {
-  const res = await fetch(`${BASE}/analyze`, {
+  const res = await fetchWithAuth(`${BASE}/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ jobDescription, resumeId }),
@@ -68,7 +68,7 @@ export async function analyzeJD(jobDescription: string, resumeId?: string): Prom
 }
 
 export async function scoreResume(jdAnalysis: JDAnalysis, resumeId: string): Promise<ATSScore> {
-  const res = await fetch(`${BASE}/score`, {
+  const res = await fetchWithAuth(`${BASE}/score`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ jdAnalysis, resumeId }),

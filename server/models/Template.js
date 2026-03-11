@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 
 const templateSchema = new mongoose.Schema({
-  name: { type: String, required: true, unique: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  name: { type: String, required: true },
   description: { type: String, default: '' },
   format: {
     fontFamily: String,

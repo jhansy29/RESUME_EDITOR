@@ -9,25 +9,25 @@ const cards: { view: AppView; title: string; desc: string; icon: string }[] = [
   {
     view: 'editor',
     title: 'Resume Editor',
-    desc: 'Create, edit, and export polished resumes with live preview and DOCX/PDF export.',
+    desc: 'Create, edit, and export polished resumes with live preview and one-click DOCX/PDF export.',
     icon: '\u270F\uFE0F',
   },
   {
     view: 'vault',
-    title: 'Vault',
-    desc: 'Your master source of truth — all experience, bullets, and projects in one place.',
+    title: 'Experience Vault',
+    desc: 'Your master source of truth for all experience, bullet variants, and projects in one place.',
     icon: '\uD83D\uDD12',
   },
   {
     view: 'jd-analyzer',
     title: 'JD Analyzer',
-    desc: 'Analyze job descriptions, score your resume, and get AI-powered tailoring suggestions.',
+    desc: 'Analyze job descriptions, score keyword match, and get AI-powered tailoring suggestions.',
     icon: '\uD83C\uDFAF',
   },
   {
     view: 'tracker',
     title: 'Application Tracker',
-    desc: 'Track job applications, statuses, contacts, and deadlines in one place.',
+    desc: 'Track applications, statuses, contacts, and deadlines across your entire job search.',
     icon: '\uD83D\uDCCB',
   },
 ];
@@ -37,7 +37,9 @@ export function HomePage({ onNavigate }: Props) {
     <div className="home-page">
       <div className="home-header">
         <h1 className="home-title">Resume Studio</h1>
-        <p className="home-subtitle">Build, manage, and tailor your resume</p>
+        <p className="home-subtitle">
+          Build, tailor, and track your resumes with precision
+        </p>
       </div>
       <div className="home-cards">
         {cards.map((c) => (

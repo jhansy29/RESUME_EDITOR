@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { AppShell } from './components/Layout/AppShell';
+import { AuthGuard } from './components/Auth/AuthGuard';
 import { useResumeStore } from './hooks/useResumeStore';
 
 function UndoRedoListener() {
@@ -57,8 +58,10 @@ class ErrorBoundary extends React.Component<
 function App() {
   return (
     <ErrorBoundary>
-      <UndoRedoListener />
-      <AppShell />
+      <AuthGuard>
+        <UndoRedoListener />
+        <AppShell />
+      </AuthGuard>
     </ErrorBoundary>
   );
 }

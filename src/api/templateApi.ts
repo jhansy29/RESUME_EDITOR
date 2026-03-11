@@ -1,4 +1,4 @@
-import { API_BASE } from './config';
+import { API_BASE, fetchWithAuth } from './config';
 
 const BASE = `${API_BASE}/templates`;
 
@@ -10,19 +10,19 @@ export interface TemplateMeta {
 }
 
 export async function listTemplates(): Promise<TemplateMeta[]> {
-  const res = await fetch(BASE);
+  const res = await fetchWithAuth(BASE);
   if (!res.ok) throw new Error('Failed to list templates');
   return res.json();
 }
 
 export async function getTemplate(id: string) {
-  const res = await fetch(`${BASE}/${id}`);
+  const res = await fetchWithAuth(`${BASE}/${id}`);
   if (!res.ok) throw new Error('Failed to load template');
   return res.json();
 }
 
 export async function createTemplate(data: Record<string, unknown>) {
-  const res = await fetch(BASE, {
+  const res = await fetchWithAuth(BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -32,7 +32,7 @@ export async function createTemplate(data: Record<string, unknown>) {
 }
 
 export async function patchTemplate(id: string, data: Record<string, unknown>) {
-  const res = await fetch(`${BASE}/${id}`, {
+  const res = await fetchWithAuth(`${BASE}/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -42,7 +42,7 @@ export async function patchTemplate(id: string, data: Record<string, unknown>) {
 }
 
 export async function deleteTemplate(id: string) {
-  const res = await fetch(`${BASE}/${id}`, { method: 'DELETE' });
+  const res = await fetchWithAuth(`${BASE}/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Failed to delete template');
   return res.json();
 }
@@ -53,7 +53,7 @@ export async function generateTemplate(input: { file?: File; text?: string; name
   if (input.text) form.append('text', input.text);
   if (input.name) form.append('name', input.name);
 
-  const res = await fetch(`${API_BASE}/generate-template`, {
+  const res = await fetchWithAuth(`${API_BASE}/generate-template`, {
     method: 'POST',
     body: form,
   });

@@ -2,13 +2,15 @@ import { Router } from 'express';
 import { callAI } from '../utils/ai.js';
 import { Resume } from '../models/Resume.js';
 import { SavedJD } from '../models/SavedJD.js';
+import { resumeToText } from '../utils/resumeToText.js';
+import { checkQuota } from '../middleware/quota.js';
 
 export const jdRouter = Router();
 
 // --- Saved JDs CRUD ---
-jdRouter.get('/saved', async (_req, res) => {
+jdRouter.get('/saved', async (req, res) => {
   try {
-    const jds = await SavedJD.find().sort({ updatedAt: -1 }).select('title company updatedAt');
+    const jds = await SavedJD.find({ userId: req.userId }).sort({ updatedAt: -1 }).select('title company updatedAt');
     res.json(jds);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -17,7 +19,7 @@ jdRouter.get('/saved', async (_req, res) => {
 
 jdRouter.get('/saved/:id', async (req, res) => {
   try {
-    const jd = await SavedJD.findById(req.params.id);
+    const jd = await SavedJD.findOne({ _id: req.params.id, userId: req.userId });
     if (!jd) return res.status(404).json({ error: 'Saved JD not found' });
     res.json(jd);
   } catch (err) {
@@ -25,13 +27,13 @@ jdRouter.get('/saved/:id', async (req, res) => {
   }
 });
 
-jdRouter.post('/saved', async (req, res) => {
+jdRouter.post('/saved', checkQuota(SavedJD, 'maxSavedJDs'), async (req, res) => {
   try {
     const { title, company, jobDescription, analysis } = req.body;
     if (!title || !jobDescription) {
       return res.status(400).json({ error: 'title and jobDescription are required' });
     }
-    const jd = await SavedJD.create({ title, company, jobDescription, analysis });
+    const jd = await SavedJD.create({ title, company, jobDescription, analysis, userId: req.userId });
     res.status(201).json(jd);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -40,7 +42,11 @@ jdRouter.post('/saved', async (req, res) => {
 
 jdRouter.patch('/saved/:id', async (req, res) => {
   try {
-    const jd = await SavedJD.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const jd = await SavedJD.findOneAndUpdate(
+      { _id: req.params.id, userId: req.userId },
+      req.body,
+      { new: true }
+    );
     if (!jd) return res.status(404).json({ error: 'Saved JD not found' });
     res.json(jd);
   } catch (err) {
@@ -50,7 +56,7 @@ jdRouter.patch('/saved/:id', async (req, res) => {
 
 jdRouter.delete('/saved/:id', async (req, res) => {
   try {
-    await SavedJD.findByIdAndDelete(req.params.id);
+    await SavedJD.findOneAndDelete({ _id: req.params.id, userId: req.userId });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -184,9 +190,9 @@ jdRouter.post('/analyze', async (req, res) => {
     // If a resume ID is provided, also calculate ATS score
     let atsScore = null;
     if (resumeId) {
-      const resume = await Resume.findById(resumeId);
+      const resume = await Resume.findOne({ _id: resumeId, userId: req.userId });
       if (resume) {
-        const resumeText = serializeResume(resume.toObject());
+        const resumeText = resumeToText(resume.toObject());
         const scoreInput = `JD ANALYSIS:\n${JSON.stringify(analysis, null, 2)}\n\nRESUME:\n${resumeText}`;
         console.log(`[JD Analyze] Scoring against resume ${resumeId}...`);
         atsScore = await callAI(ATS_SCORE_PROMPT, scoreInput);
@@ -208,10 +214,10 @@ jdRouter.post('/score', async (req, res) => {
       return res.status(400).json({ error: 'Missing "jdAnalysis" or "resumeId"' });
     }
 
-    const resume = await Resume.findById(resumeId);
+    const resume = await Resume.findOne({ _id: resumeId, userId: req.userId });
     if (!resume) return res.status(404).json({ error: 'Resume not found' });
 
-    const resumeText = serializeResume(resume.toObject());
+    const resumeText = resumeToText(resume.toObject());
     const scoreInput = `JD ANALYSIS:\n${JSON.stringify(jdAnalysis, null, 2)}\n\nRESUME:\n${resumeText}`;
 
     console.log(`[JD Score] Scoring resume ${resumeId}...`);
@@ -223,44 +229,118 @@ jdRouter.post('/score', async (req, res) => {
   }
 });
 
-// Helper: serialize a resume document into a flat text string for LLM scoring
-function serializeResume(doc) {
-  const lines = [];
-  if (doc.contact) {
-    lines.push(`${doc.contact.name || ''}`);
-    lines.push(`${doc.contact.email || ''} | ${doc.contact.phone || ''} | ${doc.contact.linkedin || ''}`);
-  }
-  if (doc.summary) lines.push(`SUMMARY: ${doc.summary}`);
-  if (doc.education?.length) {
-    lines.push('EDUCATION:');
-    for (const e of doc.education) {
-      lines.push(`  ${e.school} — ${e.degree} (${e.dates})`);
-      if (e.coursework) lines.push(`  Coursework: ${e.coursework}`);
+// --- Resume Tailoring ---
+
+const TAILOR_PROMPT = `You are a resume tailoring engine. Given a resume, a JD analysis, and optionally Jobscan ATS gaps, produce targeted edits to maximize ATS match rate.
+
+CRITICAL RULES:
+- NEVER fabricate experience, projects, metrics, or skills not present in the resume
+- ONLY rephrase bullets using JD vocabulary for the SAME real work
+- The Skills section is the primary ATS keyword injection zone — add JD keywords freely (only real skills)
+- Reorder bullets so the most JD-relevant appears first under each role
+- Rewrite the summary to embed missing keywords naturally (2-3 sentences max)
+- Never inflate metrics, team sizes, budgets, or scope
+- Each bullet must start with a strong action verb
+- Use **bold** markdown for key technical terms, tools, frameworks, and metrics
+
+Return ONLY valid JSON — no markdown backticks, no explanation.
+
+The JSON must match this exact schema:
+{
+  "summary": "string (rewritten professional summary with JD keywords, using **bold** for key terms)",
+  "skills": [
+    {
+      "id": "string (existing skill row ID, or 'new-N' for new rows)",
+      "category": "string",
+      "skills": "string (comma-separated skills)"
     }
-  }
-  if (doc.skills?.length) {
-    lines.push('SKILLS:');
-    for (const s of doc.skills) {
-      lines.push(`  ${s.category}: ${s.skills}`);
+  ],
+  "bulletChanges": [
+    {
+      "section": "experience | projects",
+      "entryId": "string (ID of the experience/project entry)",
+      "bulletId": "string (ID of the bullet being changed)",
+      "original": "string (original bullet text for reference)",
+      "revised": "string (rephrased bullet with JD keywords, same real work, using **bold** for key terms)"
     }
-  }
-  if (doc.experience?.length) {
-    lines.push('EXPERIENCE:');
-    for (const e of doc.experience) {
-      lines.push(`  ${e.company} — ${e.role} (${e.dates})`);
-      for (const b of (e.bullets || [])) {
-        lines.push(`    - ${b.text}`);
-      }
+  ],
+  "bulletReorders": [
+    {
+      "section": "experience | projects",
+      "entryId": "string (ID of the entry)",
+      "bulletIds": ["string (ordered list of bullet IDs, most JD-relevant first)"]
     }
-  }
-  if (doc.projects?.length) {
-    lines.push('PROJECTS:');
-    for (const p of doc.projects) {
-      lines.push(`  ${p.title} ${p.techStack ? `| ${p.techStack}` : ''} (${p.date || ''})`);
-      for (const b of (p.bullets || [])) {
-        lines.push(`    - ${b.text}`);
-      }
-    }
-  }
-  return lines.join('\n');
+  ]
 }
+
+GUIDELINES:
+- Only include bulletChanges for bullets that actually need rephrasing — do NOT change bullets that already match well
+- summary: always provide a rewritten summary optimized for this JD
+- skills: provide the COMPLETE skills array (existing + new rows merged), reordered so JD-critical categories come first
+- bulletReorders: only include entries where the order should change
+- For each bulletChange, the "revised" text must describe the SAME work/achievement as the "original"
+- Prefer embedding missing keywords naturally over adding them awkwardly
+- Keep bullets under 2 lines / ~30 words`;
+
+jdRouter.post('/tailor', async (req, res) => {
+  try {
+    const { resumeId, jdAnalysis, jobscanGaps } = req.body;
+    if (!resumeId || !jdAnalysis) {
+      return res.status(400).json({ error: 'resumeId and jdAnalysis are required' });
+    }
+
+    const resume = await Resume.findOne({ _id: resumeId, userId: req.userId });
+    if (!resume) return res.status(404).json({ error: 'Resume not found' });
+
+    const doc = resume.toObject();
+    const resumeText = resumeToText(doc);
+
+    // Build context for the LLM
+    let userContent = `JD ANALYSIS:\n${JSON.stringify(jdAnalysis, null, 2)}\n\n`;
+
+    if (jobscanGaps) {
+      userContent += `JOBSCAN ATS GAPS (missing keywords to address):\n`;
+      if (jobscanGaps.hardSkills?.missing?.length) {
+        userContent += `  Hard skills missing: ${jobscanGaps.hardSkills.missing.join(', ')}\n`;
+      }
+      if (jobscanGaps.softSkills?.missing?.length) {
+        userContent += `  Soft skills missing: ${jobscanGaps.softSkills.missing.join(', ')}\n`;
+      }
+      userContent += '\n';
+    }
+
+    userContent += `CURRENT RESUME:\n${resumeText}\n\n`;
+
+    // Include structured resume data so LLM can reference IDs
+    userContent += `RESUME STRUCTURE (with IDs):\n`;
+    userContent += `Summary: ${doc.summary || '(none)'}\n`;
+    userContent += `Skills:\n`;
+    for (const s of (doc.skills || [])) {
+      userContent += `  [${s.id}] ${s.category}: ${s.skills}\n`;
+    }
+    userContent += `Experience:\n`;
+    for (const e of (doc.experience || [])) {
+      userContent += `  [${e.id}] ${e.company} — ${e.role}\n`;
+      for (const b of (e.bullets || [])) {
+        userContent += `    [${b.id}] ${b.text}\n`;
+      }
+    }
+    userContent += `Projects:\n`;
+    for (const p of (doc.projects || [])) {
+      userContent += `  [${p.id}] ${p.title}\n`;
+      for (const b of (p.bullets || [])) {
+        userContent += `    [${b.id}] ${b.text}\n`;
+      }
+    }
+
+    console.log(`[JD Tailor] Generating tailored resume for ${resumeId}...`);
+    const tailorResult = await callAI(TAILOR_PROMPT, userContent);
+    console.log(`[JD Tailor] Done. ${tailorResult.bulletChanges?.length || 0} bullet changes, ${tailorResult.skills?.length || 0} skill rows`);
+
+    res.json(tailorResult);
+  } catch (err) {
+    console.error('[JD Tailor] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+

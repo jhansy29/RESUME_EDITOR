@@ -119,22 +119,22 @@ Rules:
 - Do NOT skip any content — include everything from the master file
 - Return ONLY the JSON object, nothing else`;
 
-// Get the vault (single-user: return the first one or null)
-vaultRouter.get('/', async (_req, res) => {
-  const doc = await ProfileVault.findOne().sort({ updatedAt: -1 });
+// Get the vault (one per user)
+vaultRouter.get('/', async (req, res) => {
+  const doc = await ProfileVault.findOne({ userId: req.userId });
   res.json(doc || null);
 });
 
 // Create a new vault
 vaultRouter.post('/', async (req, res) => {
-  const doc = await ProfileVault.create(req.body);
+  const doc = await ProfileVault.create({ ...req.body, userId: req.userId });
   res.status(201).json(doc);
 });
 
 // Update vault sections
 vaultRouter.patch('/:id', async (req, res) => {
-  const doc = await ProfileVault.findByIdAndUpdate(
-    req.params.id,
+  const doc = await ProfileVault.findOneAndUpdate(
+    { _id: req.params.id, userId: req.userId },
     { $set: req.body },
     { new: true, runValidators: true }
   );
@@ -144,7 +144,7 @@ vaultRouter.patch('/:id', async (req, res) => {
 
 // Delete vault
 vaultRouter.delete('/:id', async (req, res) => {
-  await ProfileVault.findByIdAndDelete(req.params.id);
+  await ProfileVault.findOneAndDelete({ _id: req.params.id, userId: req.userId });
   res.json({ ok: true });
 });
 
@@ -156,7 +156,7 @@ vaultRouter.post('/:id/import', async (req, res) => {
       return res.status(400).json({ error: 'Missing "text" field with master resume content' });
     }
 
-    const vault = await ProfileVault.findById(req.params.id);
+    const vault = await ProfileVault.findOne({ _id: req.params.id, userId: req.userId });
     if (!vault) return res.status(404).json({ error: 'Vault not found' });
 
     console.log(`[Vault Import] Parsing ${text.length} chars of master text...`);
@@ -195,6 +195,7 @@ vaultRouter.post('/import-new', async (req, res) => {
 
     const doc = await ProfileVault.create({
       name: name || 'Imported Vault',
+      userId: req.userId,
       ...parsed,
     });
 

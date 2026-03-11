@@ -1,12 +1,14 @@
 import { Router } from 'express';
+import mongoose from 'mongoose';
 import { Application } from '../models/Application.js';
+import { checkQuota } from '../middleware/quota.js';
 
 export const applicationsRouter = Router();
 
 // List all applications (sorted by most recent)
 applicationsRouter.get('/', async (req, res) => {
   try {
-    const apps = await Application.find().sort({ dateApplied: -1 });
+    const apps = await Application.find({ userId: req.userId }).sort({ dateApplied: -1 });
     res.json(apps);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -16,7 +18,7 @@ applicationsRouter.get('/', async (req, res) => {
 // Get single application
 applicationsRouter.get('/:id', async (req, res) => {
   try {
-    const app = await Application.findById(req.params.id);
+    const app = await Application.findOne({ _id: req.params.id, userId: req.userId });
     if (!app) return res.status(404).json({ error: 'Not found' });
     res.json(app);
   } catch (err) {
@@ -25,9 +27,9 @@ applicationsRouter.get('/:id', async (req, res) => {
 });
 
 // Create application
-applicationsRouter.post('/', async (req, res) => {
+applicationsRouter.post('/', checkQuota(Application, 'maxApplications'), async (req, res) => {
   try {
-    const app = await Application.create(req.body);
+    const app = await Application.create({ ...req.body, userId: req.userId });
     res.status(201).json(app);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -37,8 +39,8 @@ applicationsRouter.post('/', async (req, res) => {
 // Update application
 applicationsRouter.put('/:id', async (req, res) => {
   try {
-    const app = await Application.findByIdAndUpdate(
-      req.params.id,
+    const app = await Application.findOneAndUpdate(
+      { _id: req.params.id, userId: req.userId },
       { ...req.body, dateUpdated: new Date() },
       { new: true, runValidators: true }
     );
@@ -52,7 +54,7 @@ applicationsRouter.put('/:id', async (req, res) => {
 // Delete application
 applicationsRouter.delete('/:id', async (req, res) => {
   try {
-    const app = await Application.findByIdAndDelete(req.params.id);
+    const app = await Application.findOneAndDelete({ _id: req.params.id, userId: req.userId });
     if (!app) return res.status(404).json({ error: 'Not found' });
     res.json({ ok: true });
   } catch (err) {
@@ -225,8 +227,9 @@ applicationsRouter.post('/scrape-url', async (req, res) => {
 // Get stats/summary
 applicationsRouter.get('/stats/summary', async (req, res) => {
   try {
-    const total = await Application.countDocuments();
+    const total = await Application.countDocuments({ userId: req.userId });
     const byStatus = await Application.aggregate([
+      { $match: { userId: new mongoose.Types.ObjectId(req.userId) } },
       { $group: { _id: '$status', count: { $sum: 1 } } },
     ]);
     const statusMap = {};

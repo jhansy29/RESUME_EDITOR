@@ -1,11 +1,11 @@
 import type { ResumeData } from '../types/resume';
 
-export function exportJson(data: ResumeData) {
+export function exportJson(data: ResumeData, name?: string) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'resume.json';
+  a.download = name ? `${name}.json` : 'resume.json';
   a.click();
   URL.revokeObjectURL(url);
 }
