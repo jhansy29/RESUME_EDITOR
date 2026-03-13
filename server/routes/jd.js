@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import { chromium } from 'playwright';
-import { callAI } from '../utils/ai.js';
+import { callAI, callAIWithTools } from '../utils/ai.js';
 import { Resume } from '../models/Resume.js';
 import { SavedJD } from '../models/SavedJD.js';
 import { ProfileVault } from '../models/ProfileVault.js';
 import { resumeToText } from '../utils/resumeToText.js';
 import { vaultToContext } from '../utils/vaultToContext.js';
+import { getJobscanClient } from '../utils/jobscanClient.js';
 
 export const jdRouter = Router();
 
@@ -373,7 +374,7 @@ HONESTY RULES:
 // Analyze a JD — extract keywords, requirements, and optionally score against a resume
 jdRouter.post('/analyze', async (req, res) => {
   try {
-    const { jobDescription, resumeId } = req.body;
+    const { jobDescription } = req.body;
     if (!jobDescription || typeof jobDescription !== 'string') {
       return res.status(400).json({ error: 'Missing "jobDescription" field' });
     }
@@ -381,19 +382,8 @@ jdRouter.post('/analyze', async (req, res) => {
     console.log(`[JD Analyze] Parsing ${jobDescription.length} chars...`);
     const analysis = await callAI(JD_ANALYSIS_PROMPT, jobDescription);
 
-    // If a resume ID is provided, also calculate ATS score
-    let atsScore = null;
-    if (resumeId) {
-      const resume = await Resume.findOne({ _id: resumeId, userId: req.userId });
-      if (resume) {
-        const resumeText = resumeToText(resume.toObject());
-        const scoreInput = `JD ANALYSIS:\n${JSON.stringify(analysis, null, 2)}\n\nRESUME:\n${resumeText}`;
-        console.log(`[JD Analyze] Scoring against resume ${resumeId}...`);
-        atsScore = await callAI(ATS_SCORE_PROMPT, scoreInput);
-      }
-    }
-
-    res.json({ ...analysis, atsScore });
+    // ATS scoring is done by Jobscan during scan-and-iterate, not by AI
+    res.json({ ...analysis, atsScore: null });
   } catch (err) {
     console.error('[JD Analyze] Error:', err);
     res.status(500).json({ error: err.message });
@@ -605,6 +595,203 @@ jdRouter.post('/tailor', async (req, res) => {
     res.json(tailorResult);
   } catch (err) {
     console.error('[JD Tailor] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Jobscan tool definitions for Llama function calling ---
+// NOTE: Tools take NO text arguments. The backend already has the resume and JD text.
+// This prevents Llama from wasting tokens copying huge text into tool arguments.
+const JOBSCAN_TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'jobscan_scan',
+      description: 'Scan the current resume against the job description using Jobscan ATS checker. The resume text and JD are already loaded — just call this with no arguments. Returns match rate and skill gaps.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'jobscan_rescan',
+      description: 'Rescan the current resume against the same job description. The resume text is already loaded. Use this after edits have been applied. Returns updated match rate and skill gaps.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'jobscan_get_gaps',
+      description: 'Get detailed keyword gap analysis from the most recent scan. Returns missing keywords that need to be added.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+];
+
+// --- Scan with Jobscan (via Llama tool calling) + auto-generate edits ---
+jdRouter.post('/scan-and-iterate', async (req, res) => {
+  try {
+    const { resumeId, jdAnalysis, jdText, iterationContext } = req.body;
+    if (!resumeId || !jdAnalysis || !jdText) {
+      return res.status(400).json({ error: 'resumeId, jdAnalysis, and jdText are required' });
+    }
+
+    const resume = await Resume.findOne({ _id: resumeId, userId: req.userId });
+    if (!resume) return res.status(404).json({ error: 'Resume not found' });
+
+    const vault = await ProfileVault.findOne({ userId: req.userId });
+    const hasVault = vault && (vault.experience?.length || vault.projects?.length || vault.skills?.length);
+
+    const doc = resume.toObject();
+    const resumeText = resumeToText(doc, { stripBold: true });
+    const fullResumeText = resumeToText(doc);
+    const round = iterationContext?.round || 1;
+
+    console.log(`[Scan+Iterate] Round ${round}: Starting agentic scan+iterate for resume ${resumeId} (vault: ${hasVault ? 'yes' : 'no'})`);
+
+    // --- Tool executor: routes Llama's tool calls to JobscanMCPClient ---
+    const client = await getJobscanClient(req.userId);
+    let lastJobscanReport = null;
+
+    const toolExecutor = async (name) => {
+      switch (name) {
+        case 'jobscan_scan': {
+          const report = await client.scan(resumeText, jdText);
+          lastJobscanReport = report;
+          return JSON.stringify(report);
+        }
+        case 'jobscan_rescan': {
+          const report = await client.rescan(resumeText);
+          lastJobscanReport = report;
+          return JSON.stringify(report);
+        }
+        case 'jobscan_get_gaps': {
+          return await client.getGaps();
+        }
+        default:
+          throw new Error(`Unknown tool: ${name}`);
+      }
+    };
+
+    // --- Build user message with all context Llama needs ---
+    let userContent = `JD ANALYSIS:\n${JSON.stringify(jdAnalysis, null, 2)}\n\n`;
+    userContent += `JOB DESCRIPTION TEXT:\n${jdText}\n\n`;
+
+    if (iterationContext) {
+      userContent += `ITERATION CONTEXT (Round ${round + 1}):\n`;
+      const scoreHistory = iterationContext.scoreHistory || [];
+      if (scoreHistory.length) {
+        userContent += `  Score history: ${scoreHistory.map(s => `Round ${s.round}: ${s.score}%`).join(', ')}\n`;
+      }
+      if (iterationContext.previousChangesApplied?.length) {
+        userContent += `  Already applied in previous rounds:\n`;
+        for (const change of iterationContext.previousChangesApplied) {
+          userContent += `    - ${change}\n`;
+        }
+      }
+      userContent += `  INSTRUCTION: Focus ONLY on closing the remaining gaps. Do NOT re-suggest changes already applied.\n\n`;
+    }
+
+    if (hasVault) {
+      const vaultText = vaultToContext(vault.toObject(), jdAnalysis.roleType);
+      userContent += `${vaultText}\n`;
+    }
+    userContent += `CURRENT RESUME:\n${fullResumeText}\n\n`;
+
+    userContent += `RESUME STRUCTURE (with IDs for edits):\n`;
+    userContent += `Summary: ${doc.summary || '(none)'}\n`;
+    userContent += `Skills:\n`;
+    for (const s of (doc.skills || [])) {
+      userContent += `  [${s.id}] ${s.category}: ${s.skills}\n`;
+    }
+    userContent += `Experience:\n`;
+    for (const e of (doc.experience || [])) {
+      userContent += `  [${e.id}] ${e.company} - ${e.role}\n`;
+      for (const b of (e.bullets || [])) {
+        userContent += `    [${b.id}] ${b.text}\n`;
+      }
+    }
+    userContent += `Projects:\n`;
+    for (const p of (doc.projects || [])) {
+      userContent += `  [${p.id}] ${p.title}\n`;
+      for (const b of (p.bullets || [])) {
+        userContent += `    [${b.id}] ${b.text}\n`;
+      }
+    }
+
+    // --- Determine whether to use scan or rescan ---
+    const useRescan = client.isOnMatchReport();
+    const scanTool = useRescan ? 'jobscan_rescan' : 'jobscan_scan';
+
+    // --- System prompt: tailor instructions + MANDATORY tool workflow ---
+    const systemPrompt = `${TAILOR_PROMPT}
+
+You have Jobscan ATS scanning tools. The resume and JD are already loaded — all tools take NO arguments, just call them.
+
+YOUR MANDATORY WORKFLOW:
+STEP 1 (REQUIRED): Call ${scanTool}() to get the ATS match rate and skill gaps.
+STEP 2: Review the match rate and missing skills from the result.
+STEP 3: If score >= 90%, respond with ONLY: {"score": <number>, "noChangesNeeded": true}
+STEP 4: If score < 90%, call jobscan_get_gaps() for detailed gaps, then generate resume edits as JSON.
+STEP 5: Your final response must be ONLY valid JSON matching the edit schema above. No explanation, no markdown.
+
+IMPORTANT: All tools take NO arguments — do NOT pass resume_text or jd_text. Just call the function with empty arguments.`;
+
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userContent },
+    ];
+
+    // Force the first tool call — require Llama to scan before doing anything else
+    const forcedToolChoice = useRescan
+      ? { type: 'function', function: { name: 'jobscan_rescan' } }
+      : { type: 'function', function: { name: 'jobscan_scan' } };
+
+    // Short-circuit: if scan returns >= 90%, stop immediately
+    const shouldStop = (toolName) => {
+      if ((toolName === 'jobscan_scan' || toolName === 'jobscan_rescan') && lastJobscanReport) {
+        if (lastJobscanReport.matchRate >= 90) {
+          console.log(`[Scan+Iterate] Score ${lastJobscanReport.matchRate}% >= 90%, stopping early`);
+          return true;
+        }
+      }
+      return false;
+    };
+
+    // --- Run agentic loop ---
+    // Round 1: forced scan/rescan, Round 2: get_gaps, Round 3: generate final JSON
+    // Need at least 4 rounds: tool call rounds + 1 final content round
+    let result;
+    try {
+      result = await callAIWithTools(messages, JOBSCAN_TOOLS, toolExecutor, {
+        maxRounds: 5,
+        toolChoice: forcedToolChoice,
+        shouldStop,
+      });
+    } catch (loopErr) {
+      // If the agentic loop exceeded max rounds, return the scan report without edits
+      // rather than failing the entire request
+      console.warn(`[Scan+Iterate] Agentic loop error: ${loopErr.message}. Returning scan report only.`);
+      if (lastJobscanReport) {
+        return res.json({ jobscanReport: lastJobscanReport, tailorResult: null });
+      }
+      throw loopErr; // No scan report at all — rethrow
+    }
+
+    console.log(`[Scan+Iterate] Agentic loop complete. Last Jobscan score: ${lastJobscanReport?.matchRate || 'N/A'}%`);
+
+    // Build response
+    const jobscanReport = lastJobscanReport || { scanId: 'none', matchRate: 0, hardSkills: { found: [], missing: [] }, softSkills: { found: [], missing: [] }, otherFindings: [] };
+
+    // result is null when shouldStop fired, or Llama said no changes needed
+    if (!result || result.noChangesNeeded) {
+      return res.json({ jobscanReport, tailorResult: null });
+    }
+
+    res.json({ jobscanReport, tailorResult: result });
+  } catch (err) {
+    console.error('[Scan+Iterate] Error:', err);
     res.status(500).json({ error: err.message });
   }
 });

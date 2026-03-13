@@ -1,13 +1,13 @@
-import type { JDKeyword, ATSScore } from '../../types/jd';
+import type { JDKeyword } from '../../types/jd';
 
-function KeywordChip({ kw, matched }: { kw: JDKeyword; matched: boolean }) {
+function KeywordChip({ kw }: { kw: JDKeyword }) {
   const isExample = kw.context === 'example_in_parenthetical';
   return (
     <span
-      className={`jd-keyword-chip ${matched ? 'matched' : 'missing'}${isExample ? ' example' : ''}`}
+      className={`jd-keyword-chip${isExample ? ' example' : ''}`}
       title={isExample ? 'Parenthetical example — any equivalent tool counts' : undefined}
     >
-      {matched ? '\u2713' : '\u2717'} {kw.keyword}
+      {kw.keyword}
       {kw.frequency > 1 && <span className="jd-keyword-freq">{kw.frequency}x</span>}
       {isExample && <span className="jd-keyword-example-tag">eg</span>}
     </span>
@@ -17,19 +17,16 @@ function KeywordChip({ kw, matched }: { kw: JDKeyword; matched: boolean }) {
 interface Props {
   mustHave: JDKeyword[];
   niceToHave: JDKeyword[];
-  atsScore?: ATSScore | null;
 }
 
-export function JDKeywordDisplay({ mustHave, niceToHave, atsScore }: Props) {
-  const matchedSet = new Set((atsScore?.matchedKeywords ?? []).map((k) => k.toLowerCase()));
-
+export function JDKeywordDisplay({ mustHave, niceToHave }: Props) {
   return (
     <div className="jd-keywords">
       <div className="jd-keyword-section">
         <h5>Must-Have Keywords ({mustHave.length})</h5>
         <div className="jd-keyword-list">
           {mustHave.map((kw) => (
-            <KeywordChip key={kw.keyword} kw={kw} matched={matchedSet.has(kw.keyword.toLowerCase())} />
+            <KeywordChip key={kw.keyword} kw={kw} />
           ))}
         </div>
       </div>
@@ -38,7 +35,7 @@ export function JDKeywordDisplay({ mustHave, niceToHave, atsScore }: Props) {
         <h5>Nice-to-Have Keywords ({niceToHave.length})</h5>
         <div className="jd-keyword-list">
           {niceToHave.map((kw) => (
-            <KeywordChip key={kw.keyword} kw={kw} matched={matchedSet.has(kw.keyword.toLowerCase())} />
+            <KeywordChip key={kw.keyword} kw={kw} />
           ))}
         </div>
       </div>

@@ -41,9 +41,8 @@ function VaultSidebar() {
 }
 
 function ContactEditor() {
-  const contact = useVaultStore((s) => s.vault?.contact);
+  const contact = useVaultStore((s) => s.vault?.contact) ?? { name: '', phone: '', email: '', linkedin: '', github: '', portfolio: '' };
   const update = useVaultStore((s) => s.updateContact);
-  if (!contact) return null;
 
   const fields: { key: keyof typeof contact; label: string }[] = [
     { key: 'name', label: 'Name' },

@@ -32,7 +32,7 @@ interface JDStore {
 
   // Actions
   setJDText: (text: string) => void;
-  analyze: (resumeId?: string) => Promise<void>;
+  analyze: () => Promise<void>;
   rescore: (resumeId: string) => Promise<void>;
   clearAnalysis: () => void;
   setWorkflowStep: (step: WorkflowStep) => void;
@@ -123,12 +123,23 @@ export const useJDStore = create<JDStore>()(persist((set, get) => ({
   setJDText: (text) => set({ jdText: text }),
   setWorkflowStep: (step) => set({ workflowStep: step }),
 
-  analyze: async (resumeId) => {
+  analyze: async () => {
     const { jdText } = get();
     if (!jdText.trim()) return;
-    set({ loading: true, error: '' });
+    set({
+      loading: true, error: '',
+      // Reset all scan/iteration state for fresh analysis
+      scoreHistory: [],
+      iterationCount: 0,
+      jobscanReport: null,
+      jobscanError: '',
+      tailorResult: null,
+      tailorAccepted: {},
+      previousChangesApplied: [],
+      remainingGaps: null,
+    });
     try {
-      const result = await analyzeJD(jdText, resumeId);
+      const result = await analyzeJD(jdText);
       set({ analysis: result, loading: false, workflowStep: 'analyzed' });
     } catch (err) {
       set({ error: (err as Error).message, loading: false });

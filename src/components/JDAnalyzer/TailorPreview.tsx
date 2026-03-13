@@ -16,12 +16,12 @@ function DiffText({ original, revised }: { original: string; revised: string }) 
 
 interface TailorPreviewProps {
   result: TailorResult;
-  onApply: () => void;
-  onApplyAndScan?: () => void;
+  onApplyAndScan: () => void;
+  onScanOnly: () => void;
   iterationCount?: number;
 }
 
-export function TailorPreview({ result, onApply, onApplyAndScan, iterationCount }: TailorPreviewProps) {
+export function TailorPreview({ result, onApplyAndScan, onScanOnly, iterationCount }: TailorPreviewProps) {
   const accepted = useJDStore((s) => s.tailorAccepted);
   const setAccepted = useJDStore((s) => s.setTailorAccepted);
   const acceptAll = useJDStore((s) => s.acceptAllTailor);
@@ -50,14 +50,12 @@ export function TailorPreview({ result, onApply, onApplyAndScan, iterationCount 
         <div className="tp-header-actions">
           <span className="tp-count">{acceptedCount}/{totalChanges} accepted</span>
           <button className="jd-small-btn" onClick={acceptAll}>Accept All</button>
-          <button className="jd-small-btn" onClick={onApply} disabled={acceptedCount === 0}>
-            Apply Only
+          <button className="jd-small-btn" onClick={onScanOnly}>
+            Skip &amp; Scan
           </button>
-          {onApplyAndScan && (
-            <button className="jd-small-btn primary" onClick={onApplyAndScan} disabled={acceptedCount === 0}>
-              Apply &amp; Scan
-            </button>
-          )}
+          <button className="jd-small-btn primary" onClick={onApplyAndScan} disabled={acceptedCount === 0}>
+            Apply &amp; Scan
+          </button>
         </div>
       </div>
 

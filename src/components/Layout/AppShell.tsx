@@ -9,6 +9,7 @@ import { ResumeList } from './ResumeList';
 import { VaultView } from '../Vault/VaultView';
 import { JDAnalyzerPanel } from '../JDAnalyzer/JDAnalyzerPanel';
 import { SuggestionsPanel } from '../Suggestions/SuggestionsPanel';
+import { JDRightPanel } from '../JDAnalyzer/JDRightPanel';
 import { HomePage } from './HomePage';
 import { ApplicationTracker } from '../Tracker/ApplicationTracker';
 import { listResumes, getResume, createResume, duplicateResume, deleteResume, patchResume, type ResumeMeta } from '../../api/resumeApi';
@@ -252,7 +253,7 @@ export function AppShell() {
             <ResumePreview />
           </div>
           <div className="jd-analyzer-right">
-            <SuggestionsPanel />
+            <JDRightPanel />
           </div>
         </div>
       </div>

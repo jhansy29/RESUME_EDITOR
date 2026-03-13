@@ -5,11 +5,7 @@ import { useSuggestionsStore } from '../../hooks/useSuggestionsStore';
 import { useVaultStore } from '../../hooks/useVaultStore';
 import { listResumes, getResume, duplicateResume, type ResumeMeta } from '../../api/resumeApi';
 import { listApplications } from '../../api/applicationsApi';
-import { applyTailorChanges } from '../../utils/applyTailorChanges';
-import { JDKeywordDisplay } from './JDKeywordDisplay';
-import { ATSScoreCard } from './ATSScoreCard';
 import { JobscanScoreCard } from './JobscanScoreCard';
-import { TailorPreview } from './TailorPreview';
 import { WorkflowStepper } from './WorkflowStepper';
 import type { ResumeData } from '../../types/resume';
 import '../../styles/jd.css';
@@ -21,7 +17,6 @@ export function JDAnalyzerPanel() {
   const loading = useJDStore((s) => s.loading);
   const error = useJDStore((s) => s.error);
   const analyze = useJDStore((s) => s.analyze);
-  const rescore = useJDStore((s) => s.rescore);
   const clearAnalysis = useJDStore((s) => s.clearAnalysis);
 
   // Workflow
@@ -30,25 +25,16 @@ export function JDAnalyzerPanel() {
   // Tailor
   const tailorResult = useJDStore((s) => s.tailorResult);
   const tailorLoading = useJDStore((s) => s.tailorLoading);
-  const tailorAccepted = useJDStore((s) => s.tailorAccepted);
   const generateTailor = useJDStore((s) => s.generateTailor);
-  const clearTailor = useJDStore((s) => s.clearTailor);
 
   // Iteration loop
   const iterationCount = useJDStore((s) => s.iterationCount);
   const scoreHistory = useJDStore((s) => s.scoreHistory);
-  const recordAppliedChanges = useJDStore((s) => s.recordAppliedChanges);
-  const recordScanResult = useJDStore((s) => s.recordScanResult);
-  const generateNextIteration = useJDStore((s) => s.generateNextIteration);
 
   // Jobscan
   const jobscanReport = useJDStore((s) => s.jobscanReport);
-  const jobscanLoading = useJDStore((s) => s.jobscanLoading);
   const jobscanError = useJDStore((s) => s.jobscanError);
-  const runJobscanScan = useJDStore((s) => s.runJobscanScan);
-  const runJobscanRescan = useJDStore((s) => s.runJobscanRescan);
   const checkJobscanStatus = useJDStore((s) => s.checkJobscanStatus);
-  const jobscanStatus = useJDStore((s) => s.jobscanStatus);
 
   // Fetch from URL
   const fetchFromUrl = useJDStore((s) => s.fetchFromUrl);
@@ -68,20 +54,6 @@ export function JDAnalyzerPanel() {
   const loadData = useResumeStore((s) => s.loadData);
   const setMongoId = useResumeStore((s) => s.setMongoId);
   const resumeData = useResumeStore((s) => s.data);
-  const flushSave = useResumeStore((s) => s.flushSave);
-
-  // Resume store mutation methods for applying tailored changes
-  const updateSummary = useResumeStore((s) => s.updateSummary);
-  const updateSkillRow = useResumeStore((s) => s.updateSkillRow);
-  const addSkillRow = useResumeStore((s) => s.addSkillRow);
-  const updateBullet = useResumeStore((s) => s.updateBullet);
-  const reorderBullets = useResumeStore((s) => s.reorderBullets);
-  const removeBullet = useResumeStore((s) => s.removeBullet);
-  const insertBulletAfter = useResumeStore((s) => s.insertBulletAfter);
-  const addBullet = useResumeStore((s) => s.addBullet);
-  const addProject = useResumeStore((s) => s.addProject);
-  const updateProject = useResumeStore((s) => s.updateProject);
-  const removeProject = useResumeStore((s) => s.removeProject);
 
   // Suggestions
   const generateSuggestions = useSuggestionsStore((s) => s.generate);
@@ -99,7 +71,6 @@ export function JDAnalyzerPanel() {
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [trackerApps, setTrackerApps] = useState<Array<{ _id: string; jobTitle: string; company: string; url: string }>>([]);
   const [showTracker, setShowTracker] = useState(false);
-  const [applyingAndScanning, setApplyingAndScanning] = useState(false);
 
   // Load resumes and saved JDs on mount
   useEffect(() => {
@@ -131,31 +102,33 @@ export function JDAnalyzerPanel() {
   };
 
   const handleSelectResume = async (id: string) => {
+    // Reset scan/iteration state when switching resumes
+    useJDStore.setState({
+      scoreHistory: [],
+      iterationCount: 0,
+      jobscanReport: null,
+      jobscanError: '',
+      tailorResult: null,
+      tailorAccepted: {},
+      previousChangesApplied: [],
+      remainingGaps: null,
+      workflowStep: analysis ? 'analyzed' : 'input',
+    });
     const doc = await getResume(id);
     const { _id, __v, createdAt, updatedAt, ...data } = doc;
     loadData(data as ResumeData);
     setMongoId(_id);
   };
 
-  const handleRunATSScan = async () => {
-    if (!mongoId) return;
-    if (jobscanStatus?.onMatchReport) {
-      await runJobscanRescan(mongoId);
-    } else {
-      await runJobscanScan(mongoId);
-    }
-    // Record the score after scan completes
-    const report = useJDStore.getState().jobscanReport;
-    if (report) {
-      recordScanResult(report.matchRate);
-    }
-  };
-
   const handleAnalyzeKeywords = async () => {
-    await analyze(mongoId || undefined);
+    await analyze();
     const currentAnalysis = useJDStore.getState().analysis;
     if (currentAnalysis && vault) {
       generateSuggestions(currentAnalysis, vault, resumeData);
+    }
+    // Auto-trigger tailor after analysis if we have a resume loaded
+    if (mongoId && currentAnalysis) {
+      await generateTailor(mongoId);
     }
   };
 
@@ -184,86 +157,7 @@ export function JDAnalyzerPanel() {
 
   const handleOptimize = async () => {
     if (!mongoId) return;
-    if (!vault || (!vault.experience?.length && !vault.projects?.length && !vault.skills?.length)) {
-      useJDStore.setState({ error: 'Populate your Profile Vault first to enable smart tailoring. Go to the Vault page to import your master resume data.' });
-      return;
-    }
     await generateTailor(mongoId);
-  };
-
-  const doApplyChanges = (): string[] => {
-    if (!tailorResult) return [];
-    const storeMethods = {
-      updateSummary, updateSkillRow, addSkillRow, updateBullet,
-      reorderBullets, removeBullet, insertBulletAfter, addBullet,
-      addProject, updateProject, removeProject,
-    };
-    const applied = applyTailorChanges(
-      tailorResult,
-      tailorAccepted,
-      resumeData,
-      storeMethods,
-      () => useResumeStore.getState().data.skills,
-    );
-    return applied;
-  };
-
-  const handleApplyTailorChanges = () => {
-    doApplyChanges();
-    clearTailor();
-  };
-
-  const handleApplyAndScan = async () => {
-    if (!mongoId || !tailorResult) return;
-    setApplyingAndScanning(true);
-    useJDStore.setState({ workflowStep: 'applying' });
-
-    try {
-      // 1. Apply accepted changes
-      const applied = doApplyChanges();
-      recordAppliedChanges(applied);
-
-      // 2. Flush save to MongoDB
-      await flushSave();
-
-      // 3. Clear tailor preview
-      useJDStore.setState({ tailorResult: null, tailorAccepted: {}, workflowStep: 'scanning' });
-
-      // 4. Run Jobscan scan
-      if (jobscanStatus?.onMatchReport) {
-        await runJobscanRescan(mongoId);
-      } else {
-        await runJobscanScan(mongoId);
-      }
-
-      // 5. Record the score
-      const report = useJDStore.getState().jobscanReport;
-      if (report) {
-        recordScanResult(report.matchRate);
-      }
-    } catch {
-      // Errors are handled by the store actions
-    } finally {
-      setApplyingAndScanning(false);
-    }
-  };
-
-  const handleContinueOptimizing = async () => {
-    if (!mongoId) return;
-    await generateNextIteration(mongoId);
-  };
-
-  const handleRunJobscan = async () => {
-    if (!mongoId) return;
-    if (jobscanStatus?.onMatchReport) {
-      await runJobscanRescan(mongoId);
-    } else {
-      await runJobscanScan(mongoId);
-    }
-    const report = useJDStore.getState().jobscanReport;
-    if (report) {
-      recordScanResult(report.matchRate);
-    }
   };
 
   return (
@@ -439,20 +333,14 @@ export function JDAnalyzerPanel() {
         <div className="jd-actions">
           <button
             className="primary"
-            onClick={handleRunATSScan}
-            disabled={jobscanLoading || !jdText.trim() || !mongoId}
+            onClick={handleAnalyzeKeywords}
+            disabled={loading || sugLoading || !jdText.trim() || !mongoId}
             title={!mongoId ? 'Select a resume first' : ''}
           >
-            {jobscanLoading ? 'Scanning...' : 'Run ATS Scan'}
-          </button>
-          <button
-            onClick={handleAnalyzeKeywords}
-            disabled={loading || sugLoading || !jdText.trim()}
-          >
-            {loading ? 'Analyzing...' : 'Analyze Keywords'}
+            {loading ? 'Analyzing...' : tailorLoading ? 'Optimizing...' : 'Analyze & Optimize'}
           </button>
         </div>
-        {!mongoId && <div className="jd-hint">Select a resume above to run ATS scan</div>}
+        {!mongoId && <div className="jd-hint">Select a resume to analyze</div>}
         {error && <div className="jd-error">{error}</div>}
       </div>
 
@@ -473,44 +361,12 @@ export function JDAnalyzerPanel() {
         </div>
       )}
 
-      {/* Jobscan ATS Results (primary - no AI needed) */}
-      {(jobscanLoading || applyingAndScanning) && (
-        <div className="jd-section-card">
-          <div className="jd-loading-card">
-            <div className="jd-spinner" />
-            <span>
-              {applyingAndScanning && workflowStep === 'applying'
-                ? 'Applying changes and saving...'
-                : 'Running Jobscan ATS scan (this takes ~30s)...'}
-            </span>
-          </div>
-        </div>
-      )}
-
       {jobscanError && <div className="jd-section-card"><div className="jd-error">{jobscanError}</div></div>}
 
-      {jobscanReport && workflowStep === 'results' && (
+      {/* Jobscan Results */}
+      {jobscanReport && (workflowStep === 'results' || workflowStep === 'tailor-preview') && (
         <div className="jd-section-card jscan-results-section">
           <JobscanScoreCard report={jobscanReport} />
-
-          {jobscanReport.matchRate < 90 && mongoId && (
-            <div className="jscan-reoptimize">
-              <p className="jscan-reoptimize-msg">
-                Score is {jobscanReport.matchRate}% (target: 90%+).
-                {jobscanReport.hardSkills.missing.length > 0 &&
-                  ` Missing: ${jobscanReport.hardSkills.missing.slice(0, 5).join(', ')}${jobscanReport.hardSkills.missing.length > 5 ? '...' : ''}`
-                }
-              </p>
-              <div className="jscan-reoptimize-actions">
-                <button className="jd-optimize-btn" onClick={handleContinueOptimizing} disabled={tailorLoading}>
-                  {tailorLoading ? 'Optimizing...' : `Continue Optimizing (Round ${iterationCount + 1})`}
-                </button>
-                <button className="jd-jobscan-btn" onClick={handleRunJobscan} disabled={jobscanLoading}>
-                  {jobscanLoading ? 'Scanning...' : 'Re-Scan Only'}
-                </button>
-              </div>
-            </div>
-          )}
 
           {jobscanReport.matchRate >= 90 && (
             <div className="jscan-success">
@@ -525,16 +381,6 @@ export function JDAnalyzerPanel() {
         </div>
       )}
 
-      {/* Tailor Preview */}
-      {(workflowStep === 'tailor-preview' || workflowStep === 'tailoring') && tailorResult && (
-        <TailorPreview
-          result={tailorResult}
-          onApply={handleApplyTailorChanges}
-          onApplyAndScan={handleApplyAndScan}
-          iterationCount={iterationCount}
-        />
-      )}
-
       {tailorLoading && (
         <div className="jd-section-card">
           <div className="jd-loading-card">
@@ -544,53 +390,12 @@ export function JDAnalyzerPanel() {
         </div>
       )}
 
-      {/* AI Keyword Analysis (secondary) */}
-      {analysis && (
-        <div className="jd-results">
-          <div className="jd-result-header">
-            <h4>{analysis.jobTitle}</h4>
-            {analysis.company && <span className="jd-company">{analysis.company}</span>}
-            <span className="jd-role-type">{analysis.roleType.replace(/_/g, ' ')}</span>
-          </div>
-
-          {analysis.atsScore && <ATSScoreCard score={analysis.atsScore} />}
-
-          <JDKeywordDisplay
-            mustHave={analysis.keywords.mustHave}
-            niceToHave={analysis.keywords.niceToHave}
-            atsScore={analysis.atsScore}
-          />
-
-          {analysis.requirements.technical.length > 0 && (
-            <div className="jd-requirements">
-              <h5>Technical Requirements</h5>
-              <ul>
-                {analysis.requirements.technical.map((r, i) => (
-                  <li key={i}>{r}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {analysis.outcomeLanguage.length > 0 && (
-            <div className="jd-outcomes">
-              <h5>Outcome Language</h5>
-              <div className="jd-outcome-chips">
-                {analysis.outcomeLanguage.map((o, i) => (
-                  <span key={i} className="jd-outcome-chip">{o}</span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Optimize button in analysis section */}
-          {mongoId && !tailorResult && !tailorLoading && workflowStep === 'analyzed' && (
-            <div className="jd-optimize-section">
-              <button className="jd-optimize-btn" onClick={handleOptimize} disabled={tailorLoading}>
-                Optimize Resume for This JD
-              </button>
-            </div>
-          )}
+      {/* Manual optimize button as fallback */}
+      {analysis && mongoId && !tailorResult && !tailorLoading && workflowStep === 'analyzed' && (
+        <div className="jd-section-card">
+          <button className="jd-optimize-btn" onClick={handleOptimize} disabled={tailorLoading}>
+            Optimize Resume for This JD
+          </button>
         </div>
       )}
     </div>

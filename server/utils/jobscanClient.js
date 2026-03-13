@@ -61,11 +61,15 @@ class JobscanMCPClient {
     console.log('[Jobscan MCP] Connected');
   }
 
-  async _callTool(name, args = {}) {
+  async _callTool(name, args = {}, timeoutMs = 5 * 60 * 1000) {
     await this.ensureConnected();
     this._resetIdleTimer();
 
-    const result = await this.client.callTool({ name, arguments: args });
+    const result = await this.client.callTool(
+      { name, arguments: args },
+      undefined,
+      { timeout: timeoutMs },
+    );
 
     // Extract text content from MCP response
     const textContent = result.content?.find(c => c.type === 'text');

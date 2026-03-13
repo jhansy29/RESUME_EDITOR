@@ -67,11 +67,11 @@ export async function fetchJDFromUrl(url: string): Promise<{ jobDescription: str
   return res.json();
 }
 
-export async function analyzeJD(jobDescription: string, resumeId?: string): Promise<JDAnalysis> {
+export async function analyzeJD(jobDescription: string): Promise<JDAnalysis> {
   const res = await fetchWithAuth(`${BASE}/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ jobDescription, resumeId }),
+    body: JSON.stringify({ jobDescription }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Analysis failed' }));

@@ -46,6 +46,24 @@ export async function closeJobscan(): Promise<void> {
   await fetchWithAuth(`${JOBSCAN_BASE}/close`, { method: 'POST' });
 }
 
+export async function scanAndIterate(
+  resumeId: string,
+  jdAnalysis: JDAnalysis,
+  jdText: string,
+  iterationContext?: IterationContext
+): Promise<{ jobscanReport: JobscanReport; tailorResult: TailorResult | null }> {
+  const res = await fetchWithAuth(`${JD_BASE}/scan-and-iterate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resumeId, jdAnalysis, jdText, iterationContext }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Scan failed' }));
+    throw new Error(err.error || 'Scan and iterate failed');
+  }
+  return res.json();
+}
+
 export async function tailorResume(
   resumeId: string,
   jdAnalysis: JDAnalysis,
