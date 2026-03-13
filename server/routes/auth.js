@@ -29,15 +29,15 @@ function setTokenCookies(res, accessToken, refreshToken) {
 
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'strict' : 'lax',
+    secure: false,
+    sameSite: 'lax',
     maxAge: 15 * 60 * 1000, // 15 minutes
   });
 
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'strict' : 'lax',
+    secure: false,
+    sameSite: 'lax',
     path: '/api/auth',
     maxAge: REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000,
   });
