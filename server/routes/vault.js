@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ProfileVault } from '../models/ProfileVault.js';
+import { Resume } from '../models/Resume.js';
 import { callAI } from '../utils/ai.js';
 
 export const vaultRouter = Router();
@@ -178,6 +179,93 @@ vaultRouter.post('/:id/import', async (req, res) => {
     res.json(vault);
   } catch (err) {
     console.error('[Vault Import] Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Import from an existing resume (no AI — direct mapping)
+vaultRouter.post('/:id/import-resume', async (req, res) => {
+  try {
+    const { resumeId } = req.body;
+    if (!resumeId) return res.status(400).json({ error: 'Missing resumeId' });
+
+    const vault = await ProfileVault.findOne({ _id: req.params.id, userId: req.userId });
+    if (!vault) return res.status(404).json({ error: 'Vault not found' });
+
+    const resume = await Resume.findOne({ _id: resumeId, userId: req.userId });
+    if (!resume) return res.status(404).json({ error: 'Resume not found' });
+
+    let bulletIdx = 1;
+    let bgIdx = 1;
+
+    // Map contact
+    if (resume.contact) vault.contact = resume.contact;
+
+    // Map education
+    if (resume.education?.length) vault.education = resume.education;
+
+    // Map skills
+    if (resume.skills?.length) vault.skills = resume.skills;
+
+    // Map summary as a variant
+    if (resume.summary) {
+      const existing = vault.summaryVariants || [];
+      const label = resume.name || 'Imported';
+      if (!existing.some(v => v.text === resume.summary)) {
+        existing.push({ id: `sum-${existing.length + 1}`, label, text: resume.summary });
+      }
+      vault.summaryVariants = existing;
+    }
+
+    // Map experience — convert flat bullets to bulletGroups
+    if (resume.experience?.length) {
+      vault.experience = resume.experience.map((exp, i) => ({
+        id: exp.id || `exp-${i + 1}`,
+        company: exp.company,
+        location: exp.location,
+        role: exp.role,
+        dates: exp.dates,
+        context: '',
+        bulletGroups: [{
+          id: `bg-${bgIdx++}`,
+          theme: 'General',
+          bullets: (exp.bullets || []).map(b => ({
+            id: `vb-${bulletIdx++}`,
+            text: b.text,
+            tags: [],
+            metrics: [],
+          })),
+        }],
+      }));
+    }
+
+    // Map projects — convert flat bullets to bulletGroups
+    if (resume.projects?.length) {
+      vault.projects = resume.projects.map((proj, i) => ({
+        id: proj.id || `proj-${i + 1}`,
+        title: proj.title,
+        techStack: proj.techStack || '',
+        date: proj.date || '',
+        description: '',
+        githubUrl: '',
+        bulletGroups: [{
+          id: `pbg-${bgIdx++}`,
+          theme: 'General',
+          bullets: (proj.bullets || []).map(b => ({
+            id: `pvb-${bulletIdx++}`,
+            text: b.text,
+            tags: [],
+            metrics: [],
+          })),
+        }],
+      }));
+    }
+
+    await vault.save();
+    console.log(`[Vault Import Resume] Imported from resume "${resume.name}"`);
+    res.json(vault);
+  } catch (err) {
+    console.error('[Vault Import Resume] Error:', err);
     res.status(500).json({ error: err.message });
   }
 });

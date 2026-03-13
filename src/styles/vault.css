@@ -331,3 +331,50 @@
   padding: 12px 20px;
   border-top: 1px solid #e2e5ea;
 }
+
+/* === Resume Picker List === */
+.vault-resume-list {
+  margin: 12px 20px;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #e2e5ea;
+  border-radius: 8px;
+}
+
+.vault-resume-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-bottom: 1px solid #f1f3f5;
+  background: white;
+  cursor: pointer;
+  transition: background 0.1s;
+  text-align: left;
+}
+
+.vault-resume-item:last-child {
+  border-bottom: none;
+}
+
+.vault-resume-item:hover {
+  background: #f8f9fb;
+}
+
+.vault-resume-item.selected {
+  background: #eef2ff;
+  border-left: 3px solid #4f46e5;
+}
+
+.vault-resume-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.vault-resume-date {
+  font-size: 11px;
+  color: #94a3b8;
+}

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useVaultStore, type VaultSection } from '../../hooks/useVaultStore';
-import { getVault, createVault, importMasterText, importNewVault } from '../../api/vaultApi';
+import { getVault, createVault, importFromResume } from '../../api/vaultApi';
+import { listResumes, type ResumeMeta } from '../../api/resumeApi';
 import { VaultExperienceEditor } from './VaultExperienceEditor';
 import { VaultProjectEditor } from './VaultProjectEditor';
 import { VaultSkillsEditor } from './VaultSkillsEditor';
 import { VaultSummaryEditor } from './VaultSummaryEditor';
-import { VaultImportModal } from './VaultImportModal';
+import { VaultResumePickerModal } from './VaultResumePickerModal';
 import type { Certification, Extracurricular } from '../../types/vault';
 import '../../styles/vault.css';
 
@@ -179,7 +180,7 @@ export function VaultView() {
   const vault = useVaultStore((s) => s.vault);
   const loading = useVaultStore((s) => s.loading);
   const loadVault = useVaultStore((s) => s.loadVault);
-  const [showImport, setShowImport] = useState(false);
+  const [showResumePicker, setShowResumePicker] = useState(false);
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
@@ -195,14 +196,10 @@ export function VaultView() {
       .finally(() => setInitializing(false));
   }, []);
 
-  const handleImport = async (text: string) => {
-    if (vault?._id) {
-      const updated = await importMasterText(vault._id, text);
-      loadVault(updated);
-    } else {
-      const created = await importNewVault(text, 'My Vault');
-      loadVault(created);
-    }
+  const handleImportFromResume = async (resumeId: string) => {
+    if (!vault?._id) return;
+    const updated = await importFromResume(vault._id, resumeId);
+    loadVault(updated);
   };
 
   if (initializing || loading) {
@@ -227,7 +224,7 @@ export function VaultView() {
             <span>{skillCount} skills</span>
           </div>
         </div>
-        <button className="primary" onClick={() => setShowImport(true)}>Import Master Text</button>
+        <button className="primary" onClick={() => setShowResumePicker(true)}>Import from Resume</button>
       </div>
       <div className="vault-body">
         <VaultSidebar />
@@ -235,7 +232,7 @@ export function VaultView() {
           <VaultContent />
         </div>
       </div>
-      {showImport && <VaultImportModal onImport={handleImport} onClose={() => setShowImport(false)} />}
+      {showResumePicker && <VaultResumePickerModal onImport={handleImportFromResume} onClose={() => setShowResumePicker(false)} />}
     </div>
   );
 }

@@ -48,6 +48,19 @@ export async function importMasterText(id: string, text: string): Promise<Profil
   return res.json();
 }
 
+export async function importFromResume(vaultId: string, resumeId: string): Promise<ProfileVault> {
+  const res = await fetchWithAuth(`${BASE}/${vaultId}/import-resume`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resumeId }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Import failed' }));
+    throw new Error(err.error || 'Failed to import from resume');
+  }
+  return res.json();
+}
+
 export async function importNewVault(text: string, name?: string): Promise<ProfileVault> {
   const res = await fetchWithAuth(`${BASE}/import-new`, {
     method: 'POST',
