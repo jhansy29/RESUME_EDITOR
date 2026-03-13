@@ -131,6 +131,95 @@ html, body, #root {
   letter-spacing: -0.01em;
 }
 
+.toolbar-resume-name:hover {
+  background: #e2e6ea;
+}
+
+.toolbar-resume-name-input {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  max-width: 300px;
+  padding: 4px 12px;
+  background: #fff;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  letter-spacing: -0.01em;
+  outline: none;
+}
+
+.toolbar-link-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.toolbar-linked-app {
+  font-size: 12px;
+  color: #3b82f6;
+  background: #eff6ff;
+  padding: 3px 10px;
+  border-radius: 6px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar-unlink-btn {
+  font-size: 11px;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+}
+
+.toolbar-unlink-btn:hover {
+  color: #ef4444;
+}
+
+.toolbar-link-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  min-width: 240px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.toolbar-link-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  font-size: 12px;
+  color: #1e293b;
+  cursor: pointer;
+}
+
+.toolbar-link-menu button:hover {
+  background: #f1f5f9;
+}
+
+.toolbar-link-empty {
+  padding: 12px;
+  font-size: 12px;
+  color: #9ca3af;
+  text-align: center;
+}
+
 .toolbar-divider {
   width: 1px;
   height: 20px;
@@ -770,6 +859,132 @@ html, body, #root {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.03);
 }
 
+/* --- Header row --- */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.create-resume-inline {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.create-input {
+  padding: 8px 12px;
+  border: 1px solid #dde0e4;
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+  font-size: 13px;
+  background: #f8f9fb;
+  color: #1e293b;
+  width: 180px;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  box-sizing: border-box;
+}
+
+.create-input::placeholder {
+  color: #94a3b8;
+}
+
+.create-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  background: #fff;
+}
+
+.create-resume-inline .create-btn {
+  padding: 8px 14px;
+  border-radius: 0 8px 8px 0;
+  border: 1px solid #4f46e5;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.15s;
+}
+
+.create-resume-inline .create-btn:hover {
+  background: #4338ca;
+}
+
+/* --- Resume Sections --- */
+.resume-section {
+  margin-bottom: 24px;
+}
+
+.resume-section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  margin-bottom: 10px;
+  padding-left: 2px;
+}
+
+.section-label-icon {
+  color: #f59e0b;
+  font-size: 12px;
+}
+
+/* --- Collapsible toggle --- */
+.resume-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 2px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  transition: color 0.15s;
+  width: 100%;
+}
+
+.resume-section-toggle:hover {
+  color: #1e293b;
+}
+
+.toggle-chevron {
+  transition: transform 0.2s ease;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.toggle-chevron.open {
+  transform: rotate(90deg);
+}
+
+.section-toggle-label {
+  flex: 1;
+  text-align: left;
+}
+
+.section-toggle-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 10px;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+}
+
 .templates-sidebar {
   width: 270px;
   flex-shrink: 0;
@@ -869,7 +1084,7 @@ html, body, #root {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 18px;
+  margin-bottom: 24px;
   gap: 16px;
   flex-wrap: wrap;
 }
@@ -900,7 +1115,7 @@ html, body, #root {
 }
 
 .resume-search {
-  flex: 0 1 200px;
+  flex: 0 1 160px;
 }
 
 .search-input {
@@ -993,6 +1208,40 @@ html, body, #root {
   opacity: 1;
 }
 
+/* --- Star Button --- */
+.resume-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.resume-card.starred {
+  border-color: #fbbf24;
+  background: #fffbeb;
+}
+
+.star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  color: #cbd5e1;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.15s, transform 0.15s;
+  flex-shrink: 0;
+}
+
+.star-btn:hover {
+  color: #f59e0b;
+  transform: scale(1.2);
+}
+
+.star-btn.active {
+  color: #f59e0b;
+}
+
 /* --- Action Buttons --- */
 .resume-action-btn {
   padding: 3px 8px;
@@ -1024,51 +1273,6 @@ html, body, #root {
 }
 
 /* --- Create Resume --- */
-.create-resume {
-  display: flex;
-  gap: 8px;
-}
-
-.create-resume .field-input {
-  flex: 1;
-  padding: 9px 14px;
-  border: 1px solid #dde0e4;
-  border-radius: 8px;
-  font-size: 13px;
-  background: #fff;
-  color: #1e293b;
-  transition: border-color 0.15s;
-}
-
-.create-resume .field-input::placeholder {
-  color: #94a3b8;
-}
-
-.create-resume .field-input:focus {
-  outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-.create-btn {
-  padding: 9px 22px;
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.3);
-}
-
-.create-btn:hover {
-  background: linear-gradient(135deg, #4338ca, #5558e6);
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
-  transform: translateY(-0.5px);
-}
-
 /* --- Upload Resume Section --- */
 .upload-resume-section {
   margin: 12px 0 16px 0;
@@ -1251,4 +1455,121 @@ html, body, #root {
 
 .template-preview-wrapper {
   width: 8.5in;
+}
+
+/* ============================================
+   SEARCHABLE SELECT
+   ============================================ */
+.searchable-select {
+  position: relative;
+}
+
+.searchable-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #dde0e4;
+  border-radius: 7px;
+  font-size: 13px;
+  color: #1e293b;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  text-align: left;
+}
+
+.searchable-select-trigger:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.searchable-select-placeholder {
+  color: #94a3b8;
+}
+
+.searchable-select-arrow {
+  font-size: 10px;
+  color: #94a3b8;
+  margin-left: 8px;
+}
+
+.searchable-select-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #e2e5ea;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 200;
+  animation: dropdown-in 0.12s ease-out;
+}
+
+.searchable-select-search {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid #e2e5ea;
+  border-radius: 8px 8px 0 0;
+  font-size: 13px;
+  color: #1e293b;
+  background: #f8f9fb;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.searchable-select-search::placeholder {
+  color: #94a3b8;
+}
+
+.searchable-select-options {
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.searchable-select-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background 0.1s;
+}
+
+.searchable-select-option:hover {
+  background: #f1f5f9;
+}
+
+.searchable-select-option.selected {
+  background: #eef2ff;
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.searchable-select-empty {
+  padding: 12px;
+  font-size: 12px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+/* Toolbar-specific searchable select overrides */
+.toolbar-link-menu .searchable-select-search {
+  font-size: 12px;
+  padding: 7px 10px;
+}
+
+.toolbar-link-menu .searchable-select-option {
+  font-size: 12px;
+  padding: 6px 10px;
 }

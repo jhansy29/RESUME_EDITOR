@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
 import { nanoid } from 'nanoid';
-import type { ResumeData, ContactInfo, EducationEntry, SkillRow, ExperienceEntry, ProjectEntry, FormatSettings, LayoutSchema } from '../types/resume';
+import type { ResumeData, ContactInfo, EducationEntry, SkillRow, ExperienceEntry, ProjectEntry, FormatSettings, LayoutSchema, CustomSectionFormat } from '../types/resume';
 import { DEFAULT_FORMAT, DEFAULT_LAYOUT } from '../types/resume';
 import { sampleResume } from '../data/sampleResume';
 import { patchResume } from '../api/resumeApi';
@@ -71,7 +71,7 @@ interface ResumeStore {
   reorderProjects: (fromIndex: number, toIndex: number) => void;
 
   // Custom Sections
-  addCustomSection: (title: string) => void;
+  addCustomSection: (title: string, format?: CustomSectionFormat) => void;
   removeCustomSection: (id: string) => void;
   updateCustomSectionTitle: (id: string, title: string) => void;
   reorderCustomSections: (fromIndex: number, toIndex: number) => void;
@@ -80,6 +80,15 @@ interface ResumeStore {
   removeCustomItem: (sectionId: string, itemId: string) => void;
   updateCustomItem: (sectionId: string, itemId: string, text: string) => void;
   reorderCustomItems: (sectionId: string, fromIndex: number, toIndex: number) => void;
+  // Custom Section Entries (for experience/projects format)
+  addCustomEntry: (sectionId: string) => string;
+  removeCustomEntry: (sectionId: string, entryId: string) => void;
+  updateCustomEntry: (sectionId: string, entryId: string, field: string, value: string) => void;
+  reorderCustomEntries: (sectionId: string, fromIndex: number, toIndex: number) => void;
+  addCustomEntryBullet: (sectionId: string, entryId: string) => string;
+  removeCustomEntryBullet: (sectionId: string, entryId: string, bulletId: string) => void;
+  updateCustomEntryBullet: (sectionId: string, entryId: string, bulletId: string, text: string) => void;
+  reorderCustomEntryBullets: (sectionId: string, entryId: string, fromIndex: number, toIndex: number) => void;
 
   // Section Order
   moveSectionOrder: (fromIndex: number, toIndex: number) => void;
@@ -102,6 +111,7 @@ interface ResumeStore {
   // Global
   loadData: (data: ResumeData) => void;
   resetToSample: () => void;
+  flushSave: () => Promise<void>;
 }
 
 function reorder<T>(list: T[], from: number, to: number): T[] {
@@ -306,10 +316,15 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       setAndSave(produce((s: ResumeStore) => { s.data.projects = reorder(s.data.projects, from, to); })),
 
     // Custom Sections
-    addCustomSection: (title) =>
+    addCustomSection: (title, format) =>
       setAndSave(produce((s: ResumeStore) => {
         if (!s.data.customSections) s.data.customSections = [];
-        s.data.customSections.push({ id: nanoid(), title, items: [] });
+        const section: { id: string; title: string; format?: CustomSectionFormat; items: { id: string; text: string }[]; entries?: (ExperienceEntry | ProjectEntry)[] } = { id: nanoid(), title, items: [] };
+        if (format && format !== 'bullets') {
+          section.format = format;
+          section.entries = [];
+        }
+        s.data.customSections.push(section);
       })),
     removeCustomSection: (id) =>
       setAndSave(produce((s: ResumeStore) => {
@@ -357,6 +372,68 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
       setAndSave(produce((s: ResumeStore) => {
         const sec = s.data.customSections?.find(cs => cs.id === sectionId);
         if (sec) sec.items = reorder(sec.items, from, to);
+      })),
+
+    // Custom Section Entries (for experience/projects format)
+    addCustomEntry: (sectionId) => {
+      const newId = nanoid();
+      setAndSave(produce((s: ResumeStore) => {
+        const sec = s.data.customSections?.find(cs => cs.id === sectionId);
+        if (!sec) return;
+        if (!sec.entries) sec.entries = [];
+        if (sec.format === 'projects') {
+          sec.entries.push({ id: newId, title: '', bullets: [] } as ProjectEntry);
+        } else {
+          sec.entries.push({ id: newId, company: '', location: '', role: '', dates: '', bullets: [] } as ExperienceEntry);
+        }
+      }));
+      return newId;
+    },
+    removeCustomEntry: (sectionId, entryId) =>
+      setAndSave(produce((s: ResumeStore) => {
+        const sec = s.data.customSections?.find(cs => cs.id === sectionId);
+        if (sec?.entries) sec.entries = sec.entries.filter(e => e.id !== entryId);
+      })),
+    updateCustomEntry: (sectionId, entryId, field, value) =>
+      setAndSave(produce((s: ResumeStore) => {
+        const sec = s.data.customSections?.find(cs => cs.id === sectionId);
+        const entry = sec?.entries?.find(e => e.id === entryId);
+        if (entry) (entry as Record<string, unknown>)[field] = value;
+      })),
+    reorderCustomEntries: (sectionId, from, to) =>
+      setAndSave(produce((s: ResumeStore) => {
+        const sec = s.data.customSections?.find(cs => cs.id === sectionId);
+        if (sec?.entries) sec.entries = reorder(sec.entries, from, to);
+      })),
+    addCustomEntryBullet: (sectionId, entryId) => {
+      const newId = nanoid();
+      setAndSave(produce((s: ResumeStore) => {
+        const sec = s.data.customSections?.find(cs => cs.id === sectionId);
+        const entry = sec?.entries?.find(e => e.id === entryId);
+        if (entry) entry.bullets.push({ id: newId, text: '' });
+      }));
+      return newId;
+    },
+    removeCustomEntryBullet: (sectionId, entryId, bulletId) =>
+      setAndSave(produce((s: ResumeStore) => {
+        const sec = s.data.customSections?.find(cs => cs.id === sectionId);
+        const entry = sec?.entries?.find(e => e.id === entryId);
+        if (entry) entry.bullets = entry.bullets.filter(b => b.id !== bulletId);
+      })),
+    updateCustomEntryBullet: (sectionId, entryId, bulletId, text) =>
+      setAndSave(produce((s: ResumeStore) => {
+        const sec = s.data.customSections?.find(cs => cs.id === sectionId);
+        const entry = sec?.entries?.find(e => e.id === entryId);
+        if (entry) {
+          const bullet = entry.bullets.find(b => b.id === bulletId);
+          if (bullet) bullet.text = text;
+        }
+      })),
+    reorderCustomEntryBullets: (sectionId, entryId, from, to) =>
+      setAndSave(produce((s: ResumeStore) => {
+        const sec = s.data.customSections?.find(cs => cs.id === sectionId);
+        const entry = sec?.entries?.find(e => e.id === entryId);
+        if (entry) entry.bullets = reorder(entry.bullets, from, to);
       })),
 
     // Section Order
@@ -408,6 +485,14 @@ export const useResumeStore = create<ResumeStore>((set, get) => {
     resetToSample: () => {
       set({ data: sampleResume });
       debouncedSave(get);
+    },
+    flushSave: async () => {
+      clearTimeout(saveTimer);
+      const { mongoId, data } = get();
+      if (mongoId) {
+        await patchResume(mongoId, data as unknown as Record<string, unknown>);
+      }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch { /* ignore */ }
     },
   };
 });

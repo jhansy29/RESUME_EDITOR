@@ -255,7 +255,7 @@ export function ResumePreview() {
       }
     } else if (key.startsWith('custom-')) {
       const cs = data.customSections?.find(c => `custom-${c.id}` === key);
-      if (cs && cs.items.length > 0) {
+      if (cs && (cs.items.length > 0 || (cs.entries && cs.entries.length > 0))) {
         sectionKeys.push(key);
         sectionBlocks.push(
           <div key={key} style={gapFor(key)}>
@@ -271,7 +271,7 @@ export function ResumePreview() {
   // Render any custom sections not in the order list
   data.customSections?.forEach((cs) => {
     const key = `custom-${cs.id}`;
-    if (!order.includes(key) && cs.items.length > 0) {
+    if (!order.includes(key) && (cs.items.length > 0 || (cs.entries && cs.entries.length > 0))) {
       sectionKeys.push(key);
       sectionBlocks.push(
         <div key={key} style={gapFor(key)}>

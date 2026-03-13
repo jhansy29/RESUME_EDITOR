@@ -14,6 +14,7 @@ export type Priority = 'Low' | 'Medium' | 'High';
 
 export interface Application {
   _id: string;
+  starred?: boolean;
   company: string;
   jobTitle: string;
   status: ApplicationStatus;
@@ -21,6 +22,7 @@ export interface Application {
   location: string;
   salaryRange: string;
   resumeVersion: string;
+  resumeId?: string;
   dateApplied: string;
   dateUpdated: string;
   notes: string;

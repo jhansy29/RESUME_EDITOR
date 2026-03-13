@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useTrackerStore } from '../../hooks/useTrackerStore';
 import { ApplicationForm } from './ApplicationForm';
 import { ApplicationRow } from './ApplicationRow';
 import { TrackerStats } from './TrackerStats';
+import { listResumes, type ResumeMeta } from '../../api/resumeApi';
 import type { ApplicationStatus } from '../../types/application';
 import '../../styles/tracker.css';
 
@@ -18,8 +19,16 @@ export function ApplicationTracker() {
   } = useTrackerStore();
 
   const [showForm, setShowForm] = useState(false);
+  const [resumes, setResumes] = useState<ResumeMeta[]>([]);
 
   useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => { listResumes().then(setResumes).catch(() => {}); }, []);
+
+  const resumeNames = useMemo(() => {
+    const map = new Map<string, string>();
+    resumes.forEach((r) => map.set(r._id, r.name));
+    return map;
+  }, [resumes]);
 
   // Filter and sort
   const filtered = applications
@@ -34,6 +43,9 @@ export function ApplicationTracker() {
       );
     })
     .sort((a, b) => {
+      // Starred items always come first
+      const starDiff = (b.starred ? 1 : 0) - (a.starred ? 1 : 0);
+      if (starDiff !== 0) return starDiff;
       let cmp = 0;
       if (sortField === 'dateApplied' || sortField === 'dateUpdated') {
         cmp = new Date(a[sortField]).getTime() - new Date(b[sortField]).getTime();
@@ -64,7 +76,7 @@ export function ApplicationTracker() {
 
       <TrackerStats applications={applications} />
 
-      {(showForm || editingId) && (
+      {showForm && !editingId && (
         <ApplicationForm
           onClose={() => { setShowForm(false); setEditingId(null); }}
         />
@@ -94,6 +106,8 @@ export function ApplicationTracker() {
         <table className="tracker-table">
           <thead>
             <tr>
+              <th className="tracker-th" style={{ width: 32 }}></th>
+              <th className="tracker-th tracker-th-star" style={{ width: 36 }}>{'\u2605'}</th>
               <th className="tracker-th sortable" onClick={() => setSortField('company')}>
                 Company{sortIcon('company')}
               </th>
@@ -104,8 +118,6 @@ export function ApplicationTracker() {
               <th className="tracker-th sortable" onClick={() => setSortField('dateApplied')}>
                 Applied{sortIcon('dateApplied')}
               </th>
-              <th className="tracker-th">Location</th>
-              <th className="tracker-th">Salary</th>
               <th className="tracker-th">Priority</th>
               <th className="tracker-th">Actions</th>
             </tr>
@@ -121,7 +133,7 @@ export function ApplicationTracker() {
               </tr>
             ) : (
               filtered.map((app) => (
-                <ApplicationRow key={app._id} app={app} />
+                <ApplicationRow key={app._id} app={app} resumeNames={resumeNames} />
               ))
             )}
           </tbody>

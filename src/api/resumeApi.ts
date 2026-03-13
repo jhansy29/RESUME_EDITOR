@@ -6,6 +6,7 @@ export interface ResumeMeta {
   _id: string;
   name: string;
   updatedAt: string;
+  starred?: boolean;
 }
 
 export async function listResumes(): Promise<ResumeMeta[]> {

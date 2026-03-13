@@ -1,12 +1,11 @@
 import { Router } from 'express';
 import { Resume } from '../models/Resume.js';
-import { checkQuota } from '../middleware/quota.js';
 
 export const resumeRouter = Router();
 
 // List all resumes (just name + id + updatedAt)
 resumeRouter.get('/', async (req, res) => {
-  const list = await Resume.find({ userId: req.userId }, 'name updatedAt').sort({ updatedAt: -1 });
+  const list = await Resume.find({ userId: req.userId }, 'name updatedAt starred').sort({ updatedAt: -1 });
   res.json(list);
 });
 
@@ -18,7 +17,7 @@ resumeRouter.get('/:id', async (req, res) => {
 });
 
 // Create new resume
-resumeRouter.post('/', checkQuota(Resume, 'maxResumes'), async (req, res) => {
+resumeRouter.post('/', async (req, res) => {
   const doc = await Resume.create({ ...req.body, userId: req.userId });
   res.status(201).json(doc);
 });

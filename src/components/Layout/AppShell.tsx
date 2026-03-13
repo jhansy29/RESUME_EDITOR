@@ -11,7 +11,7 @@ import { JDAnalyzerPanel } from '../JDAnalyzer/JDAnalyzerPanel';
 import { SuggestionsPanel } from '../Suggestions/SuggestionsPanel';
 import { HomePage } from './HomePage';
 import { ApplicationTracker } from '../Tracker/ApplicationTracker';
-import { listResumes, getResume, createResume, duplicateResume, deleteResume, type ResumeMeta } from '../../api/resumeApi';
+import { listResumes, getResume, createResume, duplicateResume, deleteResume, patchResume, type ResumeMeta } from '../../api/resumeApi';
 import { getTemplate } from '../../api/templateApi';
 import { sampleResume } from '../../data/sampleResume';
 import type { ResumeData } from '../../types/resume';
@@ -130,6 +130,11 @@ export function AppShell() {
     setResumes(await listResumes());
   };
 
+  const handleToggleStar = async (id: string, starred: boolean) => {
+    await patchResume(id, { starred });
+    setResumes((prev) => prev.map((r) => (r._id === id ? { ...r, starred } : r)));
+  };
+
   const handleSaveAsVersion = async () => {
     if (!mongoId) return;
     const versionName = prompt('Name for the new version:');
@@ -163,6 +168,19 @@ export function AppShell() {
     updateHash('editor', _id);
   };
 
+  const handleRenameResume = async (newName: string) => {
+    if (!mongoId) return;
+    await patchResume(mongoId, { name: newName });
+    setResumeName(newName);
+    setResumes((prev) => prev.map((r) => (r._id === mongoId ? { ...r, name: newName } : r)));
+  };
+
+  const handleRenameResumeById = async (id: string, newName: string) => {
+    await patchResume(id, { name: newName });
+    setResumes((prev) => prev.map((r) => (r._id === id ? { ...r, name: newName } : r)));
+    if (id === mongoId) setResumeName(newName);
+  };
+
   const handleRefreshList = async () => {
     setResumes(await listResumes());
     setShowList(true);
@@ -185,13 +203,15 @@ export function AppShell() {
   if (view === 'editor' && showList) {
     return (
       <div className="app-shell">
-        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={handleNavigate} showList />
+        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} onRename={handleRenameResume} view={view} onViewChange={handleNavigate} showList />
         <ResumeList
           resumes={resumes}
           onSelect={handleSelectResume}
           onCreate={handleCreateResume}
           onDuplicate={handleDuplicateResume}
           onDelete={handleDeleteResume}
+          onRename={handleRenameResumeById}
+          onToggleStar={handleToggleStar}
           onApplyTemplate={handleApplyTemplate}
         />
       </div>
@@ -201,7 +221,7 @@ export function AppShell() {
   if (view === 'vault') {
     return (
       <div className="app-shell">
-        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={handleNavigate} />
+        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} onRename={handleRenameResume} view={view} onViewChange={handleNavigate} />
         <div className="main-content" style={{ flexDirection: 'column' }}>
           <VaultView />
         </div>
@@ -212,7 +232,7 @@ export function AppShell() {
   if (view === 'tracker') {
     return (
       <div className="app-shell">
-        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={handleNavigate} />
+        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} onRename={handleRenameResume} view={view} onViewChange={handleNavigate} />
         <div className="main-content" style={{ flexDirection: 'column', overflow: 'auto' }}>
           <ApplicationTracker />
         </div>
@@ -223,7 +243,7 @@ export function AppShell() {
   if (view === 'jd-analyzer') {
     return (
       <div className="app-shell">
-        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={handleNavigate} />
+        <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} onRename={handleRenameResume} view={view} onViewChange={handleNavigate} />
         <div className="main-content jd-analyzer-layout">
           <div className="jd-analyzer-left">
             <JDAnalyzerPanel />
@@ -242,7 +262,7 @@ export function AppShell() {
   // Editor view (default)
   return (
     <div className="app-shell">
-      <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} view={view} onViewChange={handleNavigate} />
+      <Toolbar onShowList={handleRefreshList} onSaveAsVersion={handleSaveAsVersion} onRename={handleRenameResume} view={view} onViewChange={handleNavigate} />
       <FormatToolbar />
       <div className="main-content">
         <SectionSidebar />

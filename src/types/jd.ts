@@ -78,12 +78,35 @@ export interface TailorSkillRow {
   skills: string;
 }
 
+export interface TailorBulletSwap {
+  section: 'experience' | 'projects';
+  entryId: string;
+  removeBulletId: string;
+  addBulletText: string;
+  vaultSource: string;
+}
+
+export interface TailorProjectSwap {
+  add: Array<{ title: string; techStack: string; date: string; bullets: string[] }>;
+  remove: string[];
+}
+
 export interface TailorResult {
   summary: string;
   skills: TailorSkillRow[];
   bulletChanges: TailorBulletChange[];
   bulletReorders: TailorBulletReorder[];
+  bulletSwaps?: TailorBulletSwap[];
+  projectSwaps?: TailorProjectSwap;
+}
+
+// --- Iteration Loop ---
+export interface IterationContext {
+  round: number;
+  scoreHistory: Array<{ round: number; score: number }>;
+  previousChangesApplied: string[];
+  remainingGaps: { hardSkills: string[]; softSkills: string[] };
 }
 
 // --- Workflow ---
-export type WorkflowStep = 'input' | 'analyzed' | 'tailoring' | 'tailor-preview' | 'scanning' | 'results';
+export type WorkflowStep = 'input' | 'analyzed' | 'tailoring' | 'tailor-preview' | 'applying' | 'scanning' | 'results';

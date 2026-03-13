@@ -224,10 +224,60 @@ export async function exportDocx(data: ResumeData, name?: string) {
   // Custom Sections
   if (data.customSections && data.customSections.length > 0) {
     for (const cs of data.customSections) {
-      if (cs.items.length === 0) continue;
-      children.push(sectionHeading(cs.title, font, headingSize));
-      for (const item of cs.items) {
-        children.push(bulletParagraph(item.text, font, bodySize));
+      const format = cs.format || 'bullets';
+
+      if (format === 'bullets') {
+        if (cs.items.length === 0) continue;
+        children.push(sectionHeading(cs.title, font, headingSize));
+        for (const item of cs.items) {
+          children.push(bulletParagraph(item.text, font, bodySize));
+        }
+      } else if (format === 'experience') {
+        const entries = cs.entries || [];
+        if (entries.length === 0) continue;
+        children.push(sectionHeading(cs.title, font, headingSize));
+        for (const entry of entries) {
+          const exp = entry as { company?: string; location?: string; role?: string; dates?: string; bullets: { text: string }[] };
+          children.push(
+            twoColumnRow(
+              [new TextRun({ text: exp.company || '', bold: true, size: pt(bodySize), font })],
+              [new TextRun({ text: exp.location || '', size: pt(bodySize), font })],
+              font, bodySize
+            )
+          );
+          children.push(
+            twoColumnRow(
+              [new TextRun({ text: exp.role || '', italics: true, size: pt(bodySize), font })],
+              [new TextRun({ text: exp.dates || '', italics: true, size: pt(bodySize), font })],
+              font, bodySize
+            )
+          );
+          for (const b of exp.bullets) {
+            children.push(bulletParagraph(b.text, font, bodySize));
+          }
+        }
+      } else if (format === 'projects') {
+        const entries = cs.entries || [];
+        if (entries.length === 0) continue;
+        children.push(sectionHeading(cs.title, font, headingSize));
+        for (const entry of entries) {
+          const proj = entry as { title?: string; techStack?: string; date?: string; bullets: { text: string }[] };
+          const titleText = proj.techStack
+            ? `${proj.title || ''} (${proj.techStack})`
+            : proj.title || '';
+          children.push(
+            twoColumnRow(
+              [new TextRun({ text: titleText, bold: true, size: pt(bodySize), font })],
+              proj.date
+                ? [new TextRun({ text: proj.date, italics: true, size: pt(bodySize), font })]
+                : [],
+              font, bodySize
+            )
+          );
+          for (const b of proj.bullets) {
+            children.push(bulletParagraph(b.text, font, bodySize));
+          }
+        }
       }
     }
   }

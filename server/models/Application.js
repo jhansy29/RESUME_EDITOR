@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const applicationSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+  starred: { type: Boolean, default: false },
   company: { type: String, required: true },
   jobTitle: { type: String, required: true },
   status: {
@@ -13,6 +14,7 @@ const applicationSchema = new mongoose.Schema({
   location: { type: String, default: '' },
   salaryRange: { type: String, default: '' },
   resumeVersion: { type: String, default: '' },
+  resumeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Resume', default: null },
   dateApplied: { type: Date, default: Date.now },
   dateUpdated: { type: Date, default: Date.now },
   notes: { type: String, default: '' },

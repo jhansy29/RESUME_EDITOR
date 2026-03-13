@@ -54,6 +54,19 @@ export async function deleteSavedJD(id: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete saved JD');
 }
 
+export async function fetchJDFromUrl(url: string): Promise<{ jobDescription: string; jobTitle: string; company: string; url: string }> {
+  const res = await fetchWithAuth(`${BASE}/fetch-url`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Failed to fetch JD' }));
+    throw new Error(err.error || 'Failed to fetch JD from URL');
+  }
+  return res.json();
+}
+
 export async function analyzeJD(jobDescription: string, resumeId?: string): Promise<JDAnalysis> {
   const res = await fetchWithAuth(`${BASE}/analyze`, {
     method: 'POST',

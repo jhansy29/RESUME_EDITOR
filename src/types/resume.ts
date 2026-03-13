@@ -32,6 +32,7 @@ export interface SkillsLayout {
   showBulletMarker: boolean;
   displayMode: 'list' | 'grid';
   skillSeparator: string;
+  alignMode: 'aligned' | 'inline';
 }
 
 export interface ProjectsSectionLayout extends SectionEntryLayout {
@@ -134,10 +135,14 @@ export const DEFAULT_FORMAT: FormatSettings = {
   bulletSpacing: 0,
 };
 
+export type CustomSectionFormat = 'bullets' | 'experience' | 'projects';
+
 export interface CustomSection {
   id: string;
   title: string;
-  items: Bullet[];
+  format?: CustomSectionFormat; // defaults to 'bullets' if missing
+  items: Bullet[];              // used when format is 'bullets' or undefined
+  entries?: (ExperienceEntry | ProjectEntry)[]; // used when format is 'experience' or 'projects'
 }
 
 export const DEFAULT_SECTION_ORDER = ['header', 'education', 'summary', 'skills', 'experience', 'projects'];
@@ -207,12 +212,13 @@ export const DEFAULT_LAYOUT: LayoutSchema = {
     showBulletMarker: true,
     displayMode: 'list',
     skillSeparator: ', ',
+    alignMode: 'inline',
   },
   projects: {
     rows: DEFAULT_PROJ_LAYOUT,
     showEntryBulletMarker: true,
     boldField: 'title',
-    italicField: null,
+    italicField: 'techStack',
     techStackPosition: 'inline',
   },
 };

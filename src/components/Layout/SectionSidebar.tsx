@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useResumeStore, type ResumeSection } from '../../hooks/useResumeStore';
 import { DEFAULT_SECTION_ORDER } from '../../types/resume';
+import type { CustomSectionFormat } from '../../types/resume';
 
 const EMPTY_CUSTOM_SECTIONS: never[] = [];
 
@@ -23,6 +24,7 @@ export function SectionSidebar() {
   const moveSectionOrder = useResumeStore((s) => s.moveSectionOrder);
   const [showInput, setShowInput] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [newFormat, setNewFormat] = useState<CustomSectionFormat>('bullets');
 
   const handleClick = (key: ResumeSection) => {
     if (activeSection === key) {
@@ -35,8 +37,9 @@ export function SectionSidebar() {
   const handleAddSection = () => {
     const title = newTitle.trim();
     if (title) {
-      addCustomSection(title);
+      addCustomSection(title, newFormat);
       setNewTitle('');
+      setNewFormat('bullets');
       setShowInput(false);
       setTimeout(() => {
         const store = useResumeStore.getState();
@@ -129,11 +132,21 @@ export function SectionSidebar() {
             onChange={(e) => setNewTitle(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleAddSection();
-              if (e.key === 'Escape') { setShowInput(false); setNewTitle(''); }
+              if (e.key === 'Escape') { setShowInput(false); setNewTitle(''); setNewFormat('bullets'); }
             }}
             placeholder="Section name"
             autoFocus
           />
+          <select
+            className="field-input"
+            value={newFormat}
+            onChange={(e) => setNewFormat(e.target.value as CustomSectionFormat)}
+            style={{ width: 'auto', minWidth: 80, fontSize: 11, padding: '2px 4px' }}
+          >
+            <option value="bullets">Bullets</option>
+            <option value="experience">Experience</option>
+            <option value="projects">Projects</option>
+          </select>
           <button className="section-btn" onClick={handleAddSection} title="Add">+</button>
         </div>
       ) : (

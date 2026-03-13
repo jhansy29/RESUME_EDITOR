@@ -10,16 +10,6 @@ const userSchema = new mongoose.Schema({
   },
   passwordHash: { type: String, required: true },
   name: { type: String, required: true, trim: true },
-  plan: {
-    type: String,
-    enum: ['free', 'pro'],
-    default: 'free',
-  },
-  quotas: {
-    maxResumes: { type: Number, default: 5 },
-    maxApplications: { type: Number, default: 50 },
-    maxSavedJDs: { type: Number, default: 10 },
-  },
   jobscanCredentials: {
     email: { type: String, default: '' },
     password: { type: String, default: '' },

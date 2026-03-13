@@ -17,9 +17,11 @@ function DiffText({ original, revised }: { original: string; revised: string }) 
 interface TailorPreviewProps {
   result: TailorResult;
   onApply: () => void;
+  onApplyAndScan?: () => void;
+  iterationCount?: number;
 }
 
-export function TailorPreview({ result, onApply }: TailorPreviewProps) {
+export function TailorPreview({ result, onApply, onApplyAndScan, iterationCount }: TailorPreviewProps) {
   const accepted = useJDStore((s) => s.tailorAccepted);
   const setAccepted = useJDStore((s) => s.setTailorAccepted);
   const acceptAll = useJDStore((s) => s.acceptAllTailor);
@@ -29,20 +31,33 @@ export function TailorPreview({ result, onApply }: TailorPreviewProps) {
     1 + // summary
     1 + // skills
     (result.bulletChanges?.length || 0) +
-    (result.bulletReorders?.length || 0);
+    (result.bulletReorders?.length || 0) +
+    (result.bulletSwaps?.length || 0) +
+    (result.projectSwaps?.remove?.length || 0) +
+    (result.projectSwaps?.add?.length || 0);
 
   const acceptedCount = Object.values(accepted).filter(Boolean).length;
 
   return (
     <div className="tp-container">
       <div className="tp-header">
-        <h4>Proposed Changes</h4>
+        <div className="tp-header-title">
+          <h4>Proposed Changes</h4>
+          {iterationCount && iterationCount > 0 && (
+            <span className="tp-round-badge">Round {iterationCount}</span>
+          )}
+        </div>
         <div className="tp-header-actions">
           <span className="tp-count">{acceptedCount}/{totalChanges} accepted</span>
           <button className="jd-small-btn" onClick={acceptAll}>Accept All</button>
-          <button className="jd-small-btn primary" onClick={onApply} disabled={acceptedCount === 0}>
-            Apply Selected
+          <button className="jd-small-btn" onClick={onApply} disabled={acceptedCount === 0}>
+            Apply Only
           </button>
+          {onApplyAndScan && (
+            <button className="jd-small-btn primary" onClick={onApplyAndScan} disabled={acceptedCount === 0}>
+              Apply &amp; Scan
+            </button>
+          )}
         </div>
       </div>
 
@@ -122,6 +137,93 @@ export function TailorPreview({ result, onApply }: TailorPreviewProps) {
             );
           })}
         </div>
+      )}
+
+      {/* Bullet Swaps (from vault) */}
+      {result.bulletSwaps && result.bulletSwaps.length > 0 && (
+        <div className="tp-change-group">
+          <h5>Vault Bullet Swaps</h5>
+          {result.bulletSwaps.map((bs) => {
+            const entry = bs.section === 'experience'
+              ? resumeData.experience.find((e) => e.id === bs.entryId)
+              : resumeData.projects.find((p) => p.id === bs.entryId);
+            const entryName = entry
+              ? (bs.section === 'experience' ? (entry as { company: string }).company : (entry as { title: string }).title)
+              : bs.entryId;
+            const oldBullet = entry?.bullets.find((b) => b.id === bs.removeBulletId);
+
+            return (
+              <div key={`swap-${bs.removeBulletId}`} className="tp-change-card">
+                <label className="tp-change-header">
+                  <input
+                    type="checkbox"
+                    checked={!!accepted[`swap-${bs.removeBulletId}`]}
+                    onChange={(e) => setAccepted(`swap-${bs.removeBulletId}`, e.target.checked)}
+                  />
+                  <span className="tp-change-type">{entryName}</span>
+                  <span className="tp-badge vault">VAULT SWAP</span>
+                </label>
+                <DiffText
+                  original={oldBullet?.text || '(unknown bullet)'}
+                  revised={bs.addBulletText}
+                />
+                <div className="tp-vault-source">From: {bs.vaultSource}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Project Swaps */}
+      {result.projectSwaps && (
+        <>
+          {result.projectSwaps.remove && result.projectSwaps.remove.length > 0 && (
+            <div className="tp-change-group">
+              <h5>Remove Projects</h5>
+              {result.projectSwaps.remove.map((projId) => {
+                const proj = resumeData.projects.find((p) => p.id === projId);
+                return (
+                  <div key={`remove-proj-${projId}`} className="tp-change-card">
+                    <label className="tp-change-header">
+                      <input
+                        type="checkbox"
+                        checked={!!accepted[`remove-proj-${projId}`]}
+                        onChange={(e) => setAccepted(`remove-proj-${projId}`, e.target.checked)}
+                      />
+                      <span className="tp-change-type">{proj?.title || projId}</span>
+                      <span className="tp-badge remove">REMOVE</span>
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {result.projectSwaps.add && result.projectSwaps.add.length > 0 && (
+            <div className="tp-change-group">
+              <h5>Add Projects (from Vault)</h5>
+              {result.projectSwaps.add.map((proj, i) => (
+                <div key={`add-proj-${i}`} className="tp-change-card">
+                  <label className="tp-change-header">
+                    <input
+                      type="checkbox"
+                      checked={!!accepted[`add-proj-${i}`]}
+                      onChange={(e) => setAccepted(`add-proj-${i}`, e.target.checked)}
+                    />
+                    <span className="tp-change-type">{proj.title}</span>
+                    <span className="tp-badge vault">FROM VAULT</span>
+                  </label>
+                  <div className="tp-project-preview">
+                    {proj.techStack && <div className="tp-project-tech">{proj.techStack}</div>}
+                    {proj.bullets.map((b, j) => (
+                      <div key={j} className="tp-project-bullet">{b}</div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Bullet Reorders */}

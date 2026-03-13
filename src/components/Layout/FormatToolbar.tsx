@@ -143,6 +143,21 @@ function LayoutDropdown() {
           <input type="checkbox" checked={layout.skills.showCategories} onChange={(e) => updateLayout('skills', { showCategories: e.target.checked })} />
           Skill categories
         </label>
+        <label className="layout-toggle">
+          <input type="checkbox" checked={layout.skills.showBulletMarker} onChange={(e) => updateLayout('skills', { showBulletMarker: e.target.checked })} />
+          Skill bullets
+        </label>
+        <div className="rb-field">
+          <span className="rb-field-label">Skills align</span>
+          <select
+            className="rb-select"
+            value={layout.skills.alignMode ?? 'inline'}
+            onChange={(e) => updateLayout('skills', { alignMode: e.target.value as 'aligned' | 'inline' })}
+          >
+            <option value="inline">Inline (wraps under label)</option>
+            <option value="aligned">Aligned columns</option>
+          </select>
+        </div>
         <button className="rb-reset-btn" onClick={resetLayout}>Reset Layout</button>
       </div>
     </RbDropdown>

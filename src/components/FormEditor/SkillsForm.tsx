@@ -15,18 +15,21 @@ function SkillRowEditor({
   return (
     <div className="skill-row-editor">
       <span className="drag-handle" {...dragListeners}>⠿</span>
-      <input
-        className="field-input skill-category-input"
-        value={row.category}
-        onChange={(e) => update(row.id, 'category', e.target.value)}
-        placeholder="Category"
-      />
-      <input
-        className="field-input skill-values-input"
-        value={row.skills}
-        onChange={(e) => update(row.id, 'skills', e.target.value)}
-        placeholder="Skill1, Skill2, Skill3"
-      />
+      <div className="skill-fields">
+        <input
+          className="field-input skill-category-input"
+          value={row.category}
+          onChange={(e) => update(row.id, 'category', e.target.value)}
+          placeholder="Category"
+        />
+        <textarea
+          className="field-input skill-values-input"
+          value={row.skills}
+          onChange={(e) => update(row.id, 'skills', e.target.value)}
+          placeholder="Skill1, Skill2, Skill3"
+          rows={2}
+        />
+      </div>
       <button className="bullet-remove" onClick={() => remove(row.id)} title="Remove row">×</button>
     </div>
   );

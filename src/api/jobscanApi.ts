@@ -1,4 +1,4 @@
-import type { JobscanReport, JobscanStatus, TailorResult } from '../types/jd';
+import type { JobscanReport, JobscanStatus, TailorResult, IterationContext } from '../types/jd';
 import type { JDAnalysis } from '../types/jd';
 import { API_BASE, fetchWithAuth } from './config';
 
@@ -49,12 +49,13 @@ export async function closeJobscan(): Promise<void> {
 export async function tailorResume(
   resumeId: string,
   jdAnalysis: JDAnalysis,
-  jobscanGaps?: { hardSkills?: { missing: string[] }; softSkills?: { missing: string[] } }
+  jobscanGaps?: { hardSkills?: { missing: string[] }; softSkills?: { missing: string[] } },
+  iterationContext?: IterationContext
 ): Promise<TailorResult> {
   const res = await fetchWithAuth(`${JD_BASE}/tailor`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ resumeId, jdAnalysis, jobscanGaps }),
+    body: JSON.stringify({ resumeId, jdAnalysis, jobscanGaps, iterationContext }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Tailoring failed' }));

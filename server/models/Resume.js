@@ -8,6 +8,7 @@ const bulletSchema = new mongoose.Schema({
 const resumeSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   name: { type: String, required: true },
+  starred: { type: Boolean, default: false },
   contact: {
     name: String,
     phone: String,
@@ -52,7 +53,9 @@ const resumeSchema = new mongoose.Schema({
   customSections: [{
     id: String,
     title: String,
+    format: { type: String, enum: ['bullets', 'experience', 'projects'], default: 'bullets' },
     items: [bulletSchema],
+    entries: [mongoose.Schema.Types.Mixed],
   }],
   layout: { type: mongoose.Schema.Types.Mixed },
   format: {

@@ -10,6 +10,8 @@ interface Props {
   onCreate: (name: string) => void;
   onDuplicate: (id: string, name?: string) => void;
   onDelete: (id: string) => void;
+  onRename?: (id: string, newName: string) => void;
+  onToggleStar?: (id: string, starred: boolean) => void;
   onApplyTemplate?: (templateId: string, resumeName: string) => void;
 }
 
@@ -26,7 +28,59 @@ function timeAgo(date: Date): string {
   return date.toLocaleDateString();
 }
 
-export function ResumeList({ resumes, onSelect, onCreate, onDuplicate, onDelete, onApplyTemplate }: Props) {
+function ResumeCard({ r, onSelect, onToggleStar, onRename, onDuplicate, onDelete }: {
+  r: ResumeMeta;
+  onSelect: (id: string) => void;
+  onToggleStar?: (id: string, starred: boolean) => void;
+  onRename?: (id: string, newName: string) => void;
+  onDuplicate: (id: string, name?: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const handleRename = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newName = prompt('Rename resume:', r.name);
+    if (newName === null || !newName.trim() || newName.trim() === r.name) return;
+    onRename?.(r._id, newName.trim());
+  };
+
+  const handleDuplicate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const name = prompt('Name for the copy:', `${r.name} (Copy)`);
+    if (name === null) return;
+    onDuplicate(r._id, name || undefined);
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Delete "${r.name}"? This cannot be undone.`)) return;
+    onDelete(r._id);
+  };
+
+  return (
+    <div className={`resume-card${r.starred ? ' starred' : ''}`} onClick={() => onSelect(r._id)}>
+      <div className="resume-card-top">
+        <span className="resume-card-name">{r.name}</span>
+        <button
+          className={`star-btn${r.starred ? ' active' : ''}`}
+          title={r.starred ? 'Unstar' : 'Star'}
+          onClick={(e) => { e.stopPropagation(); onToggleStar?.(r._id, !r.starred); }}
+        >
+          {r.starred ? '\u2605' : '\u2606'}
+        </button>
+      </div>
+      <div className="resume-card-footer">
+        <span className="resume-card-date">{timeAgo(new Date(r.updatedAt))}</span>
+        <div className="resume-card-actions">
+          <button className="resume-action-btn" title="Rename" onClick={handleRename}>Rename</button>
+          <button className="resume-action-btn duplicate" title="Duplicate" onClick={handleDuplicate}>Copy</button>
+          <button className="resume-action-btn delete" title="Delete" onClick={handleDelete}>Del</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function ResumeList({ resumes, onSelect, onCreate, onDuplicate, onDelete, onRename, onToggleStar, onApplyTemplate }: Props) {
   const [newName, setNewName] = useState('');
   const [search, setSearch] = useState('');
   const [templates, setTemplates] = useState<TemplateMeta[]>([]);
@@ -34,11 +88,17 @@ export function ResumeList({ resumes, onSelect, onCreate, onDuplicate, onDelete,
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [folderOpen, setFolderOpen] = useState(false);
 
-  const filteredResumes = useMemo(() => {
-    if (!search.trim()) return resumes;
-    const q = search.toLowerCase();
-    return resumes.filter(r => r.name.toLowerCase().includes(q));
+  const { starredResumes, otherResumes } = useMemo(() => {
+    const list = search.trim()
+      ? resumes.filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
+      : [...resumes];
+    const sorted = list.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    return {
+      starredResumes: sorted.filter(r => r.starred),
+      otherResumes: sorted.filter(r => !r.starred),
+    };
   }, [resumes, search]);
 
   useEffect(() => {
@@ -59,19 +119,6 @@ export function ResumeList({ resumes, onSelect, onCreate, onDuplicate, onDelete,
     if (!name) return;
     onCreate(name);
     setNewName('');
-  };
-
-  const handleDuplicate = (e: React.MouseEvent, r: ResumeMeta) => {
-    e.stopPropagation();
-    const name = prompt('Name for the copy:', `${r.name} (Copy)`);
-    if (name === null) return;
-    onDuplicate(r._id, name || undefined);
-  };
-
-  const handleDelete = (e: React.MouseEvent, r: ResumeMeta) => {
-    e.stopPropagation();
-    if (!confirm(`Delete "${r.name}"? This cannot be undone.`)) return;
-    onDelete(r._id);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,59 +186,72 @@ export function ResumeList({ resumes, onSelect, onCreate, onDuplicate, onDelete,
 
   return (
     <div className="resume-page-layout">
-      {/* Left: Resumes (main area) */}
       <div className="resume-main-panel">
+        {/* Header row: title + search + create */}
         <div className="resume-list-header">
-          <h2>Your Resumes <span className="resume-count">{resumes.length}</span></h2>
-          <div className="resume-search">
-            <input
-              className="search-input"
-              placeholder="Search resumes..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <h2>Resumes</h2>
+          <div className="header-right">
+            <div className="resume-search">
+              <input
+                className="search-input"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="create-resume-inline">
+              <input
+                className="create-input"
+                placeholder="New resume name..."
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+              />
+              <button className="create-btn" onClick={handleCreate}>+</button>
+            </div>
           </div>
         </div>
+
         {resumes.length === 0 && <p className="empty-msg">No resumes yet. Create one to get started.</p>}
-        <div className="resume-grid">
-          {filteredResumes.map((r) => (
-            <div key={r._id} className="resume-card" onClick={() => onSelect(r._id)}>
-              <span className="resume-card-name">{r.name}</span>
-              <div className="resume-card-footer">
-                <span className="resume-card-date">{timeAgo(new Date(r.updatedAt))}</span>
-                <div className="resume-card-actions">
-                  <button
-                    className="resume-action-btn duplicate"
-                    title="Duplicate"
-                    onClick={(e) => handleDuplicate(e, r)}
-                  >
-                    Copy
-                  </button>
-                  <button
-                    className="resume-action-btn delete"
-                    title="Delete"
-                    onClick={(e) => handleDelete(e, r)}
-                  >
-                    Del
-                  </button>
-                </div>
-              </div>
+
+        {/* Pinned / Starred */}
+        {starredResumes.length > 0 && (
+          <div className="resume-section">
+            <div className="resume-section-label">
+              <span className="section-label-icon">{'\u2605'}</span>
+              Pinned
             </div>
-          ))}
-          {search && filteredResumes.length === 0 && (
-            <p className="empty-msg" style={{ gridColumn: '1 / -1' }}>No resumes match "{search}"</p>
-          )}
-        </div>
-        <div className="create-resume">
-          <input
-            className="field-input"
-            placeholder="New resume name (e.g. AI ML Engineer - Google)"
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-          />
-          <button className="create-btn" onClick={handleCreate}>Create</button>
-        </div>
+            <div className="resume-grid">
+              {starredResumes.map((r) => (
+                <ResumeCard key={r._id} r={r} onSelect={onSelect} onToggleStar={onToggleStar} onRename={onRename} onDuplicate={onDuplicate} onDelete={onDelete} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* All Resumes - collapsible */}
+        {otherResumes.length > 0 && (
+          <div className="resume-section">
+            <button className="resume-section-toggle" onClick={() => setFolderOpen(!folderOpen)}>
+              <svg className={`toggle-chevron${folderOpen ? ' open' : ''}`} width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M4.5 2.5L8 6L4.5 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span className="section-toggle-label">All Resumes</span>
+              <span className="section-toggle-count">{otherResumes.length}</span>
+            </button>
+            {folderOpen && (
+              <div className="resume-grid" style={{ marginTop: 12 }}>
+                {otherResumes.map((r) => (
+                  <ResumeCard key={r._id} r={r} onSelect={onSelect} onToggleStar={onToggleStar} onRename={onRename} onDuplicate={onDuplicate} onDelete={onDelete} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {search && starredResumes.length === 0 && otherResumes.length === 0 && (
+          <p className="empty-msg">No resumes match &ldquo;{search}&rdquo;</p>
+        )}
       </div>
 
       {/* Right: Templates sidebar */}

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useTrackerStore } from '../../hooks/useTrackerStore';
 import { scrapeJobUrl } from '../../api/applicationsApi';
+import { listResumes, type ResumeMeta } from '../../api/resumeApi';
+import { SearchableSelect } from '../common/SearchableSelect';
 import type { ApplicationStatus, Priority } from '../../types/application';
 
 const ALL_STATUSES: ApplicationStatus[] = [
@@ -25,7 +27,8 @@ export function ApplicationForm({ onClose }: Props) {
   const [url, setUrl] = useState('');
   const [location, setLocation] = useState('');
   const [salaryRange, setSalaryRange] = useState('');
-  const [resumeVersion, setResumeVersion] = useState('');
+  const [resumeId, setResumeId] = useState('');
+  const [resumes, setResumes] = useState<ResumeMeta[]>([]);
   const [dateApplied, setDateApplied] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState('');
   const [priority, setPriority] = useState<Priority>('Medium');
@@ -43,7 +46,7 @@ export function ApplicationForm({ onClose }: Props) {
       setUrl(editing.url);
       setLocation(editing.location);
       setSalaryRange(editing.salaryRange);
-      setResumeVersion(editing.resumeVersion);
+      setResumeId(editing.resumeId || '');
       setDateApplied(editing.dateApplied?.slice(0, 10) || '');
       setNotes(editing.notes);
       setPriority(editing.priority);
@@ -52,6 +55,10 @@ export function ApplicationForm({ onClose }: Props) {
       setShowFull(true);
     }
   }, [editing]);
+
+  useEffect(() => {
+    listResumes().then(setResumes).catch(() => {});
+  }, []);
 
   const handleUrlPaste = async (pastedUrl: string) => {
     setUrl(pastedUrl);
@@ -101,7 +108,7 @@ export function ApplicationForm({ onClose }: Props) {
     if (duplicateWarning && !editing) return; // Block submission for duplicates
     const data = {
       company, jobTitle, status, url, location, salaryRange,
-      resumeVersion, dateApplied, notes, priority, contactName, contactEmail,
+      resumeId: resumeId || null, dateApplied, notes, priority, contactName, contactEmail,
     };
     if (editing) {
       await update(editing._id, data);
@@ -184,8 +191,14 @@ export function ApplicationForm({ onClose }: Props) {
               <input type="date" value={dateApplied} onChange={(e) => setDateApplied(e.target.value)} />
             </div>
             <div className="tracker-field">
-              <label>Resume Version</label>
-              <input value={resumeVersion} onChange={(e) => setResumeVersion(e.target.value)} placeholder="AI/ML v2" />
+              <label>Resume</label>
+              <SearchableSelect
+                value={resumeId}
+                onChange={setResumeId}
+                options={resumes.map((r) => ({ value: r._id, label: r.name }))}
+                placeholder="Search resumes..."
+                emptyLabel="-- No resume linked --"
+              />
             </div>
             <div className="tracker-field">
               <label>Contact Name</label>

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { User } from '../models/User.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const MCP_SERVER_PATH = path.resolve(__dirname, '../../../mcp-servers/jobscan/dist/index.js');
+const MCP_SERVER_PATH = path.resolve(__dirname, '../mcp-servers/jobscan/dist/index.js');
 
 const MAX_CONCURRENT_SESSIONS = 3;
 

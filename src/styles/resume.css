@@ -97,28 +97,77 @@
 
 /* --- Skills --- */
 .skills-section { margin: 0; }
+
+/* -- Inline mode (default): category and skills flow together on one line -- */
 .skill-row {
-  display: flex;
+  display: block;
+  position: relative;
+  padding-left: 12pt;
   line-height: 1.25;
   margin: 0;
   margin-top: var(--bullet-gap, 0);
 }
-.skill-row:first-child {
-  margin-top: 0;
-}
+.skill-row:first-child { margin-top: 0; }
 .skill-row::before {
+  content: '\2022';
+  position: absolute;
+  left: 0;
+  font-weight: 700;
+}
+.skill-row.no-bullet::before { content: none; }
+.skill-row.no-bullet { padding-left: 0; }
+.skill-category-cell {
+  display: inline;
+  white-space: nowrap;
+  margin-right: 3pt;
+}
+.skill-category {
+  font-weight: 700;
+}
+.skill-category::after { content: ':'; }
+.skill-category-cell .editable-text-wrap,
+.skill-category-cell .editable-text {
+  display: inline;
+}
+.skill-values,
+.skill-values .editable-text-wrap,
+.skill-values .editable-text {
+  display: inline;
+}
+
+/* -- Aligned mode: category column aligned across rows -- */
+.skills-section.skills-aligned {
+  display: grid;
+  grid-template-columns: auto 1fr;
+}
+.skills-aligned .skill-row {
+  display: contents;
+}
+.skills-aligned .skill-category-cell {
+  display: flex;
+  align-items: baseline;
+  line-height: 1.25;
+  margin-top: var(--bullet-gap, 0);
+  margin-right: 3pt;
+}
+.skills-aligned .skill-category-cell::before {
   content: '\2022';
   margin-right: 5pt;
   flex-shrink: 0;
   font-weight: 700;
 }
-.skill-category {
-  font-weight: 700;
-  white-space: nowrap;
-  margin-right: 3pt;
+.skills-aligned .skill-row::before { content: none; }
+.skills-aligned .skill-row.no-bullet .skill-category-cell::before { content: none; }
+.skills-aligned .skill-row:first-child .skill-category-cell,
+.skills-aligned .skill-row:first-child .skill-values {
+  margin-top: 0;
 }
-.skill-category::after { content: ':'; }
-.skill-values { flex: 1; }
+.skills-aligned .skill-values,
+.skills-aligned .skill-values .editable-text-wrap {
+  display: block;
+  line-height: 1.25;
+  margin-top: var(--bullet-gap, 0);
+}
 
 /* --- Experience --- */
 .entry {
@@ -193,7 +242,7 @@
   line-height: 1.2;
 }
 .project-title { font-weight: 700; }
-.project-tech { font-weight: 700; }
+.project-tech { font-style: italic; }
 .project-date { font-style: italic; flex-shrink: 0; }
 .project-bullets {
   padding-left: 12pt;
@@ -248,15 +297,12 @@
   content: var(--contact-sep, ' | ');
 }
 
-/* Skills section grid layout */
+/* Skills section grid layout (2-col mode) */
 .skills-section.skills-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0 12pt;
-}
 
-.skill-row.no-bullet::before {
-  content: none;
 }
 
 /* Project tech stack on separate row */
